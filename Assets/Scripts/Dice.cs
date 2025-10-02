@@ -1,12 +1,35 @@
+using TMPro;
 using UnityEngine;
+using System.Collections;
+
 
 public class Dice : MonoBehaviour
 {
-    private int diceResult;
+    public int diceResult;
+    [SerializeField] private int minResult = 1;
+    [SerializeField] private int maxResult = 6;
+    [SerializeField] private int animNumber = 15;
+    [SerializeField] private TextMeshProUGUI diceText;
 
-    public int DiceResult()
+    public IEnumerator RollDice(System.Action<int> onDiceFinished)
     {
-        diceResult = Random.Range(1, 6);
-        return diceResult;
+        diceResult = Random.Range(minResult, maxResult + 1);
+        yield return StartCoroutine(TextDiceAnimation(animNumber));
+
+        yield return new WaitForSeconds(0.5f);
+        onDiceFinished?.Invoke(diceResult);
+    }
+
+    private IEnumerator TextDiceAnimation(int NumberRandom)
+    {
+        for (int i = 0; i < NumberRandom; i++)
+        {
+            int animNumber = Random.Range(minResult, maxResult + 1);
+            diceText.text = animNumber.ToString();
+
+            yield return new WaitForSeconds(0.05f);
+        }
+
+        diceText.text = diceResult.ToString();
     }
 }

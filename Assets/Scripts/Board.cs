@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class Board : MonoBehaviour
 {
-    [SerializeField] private Cell[] cells;
+    [SerializeField] public Cell[] cells;
 
     public Cell GetCellByNumber(int number)
     {
