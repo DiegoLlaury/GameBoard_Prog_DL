@@ -8,7 +8,7 @@ public class Dice : MonoBehaviour
     public int diceResult;
     [SerializeField] private int minResult = 1;
     [SerializeField] private int maxResult = 6;
-    [SerializeField] private int animNumber = 15;
+    [SerializeField] private int animNumber = 30;
     [SerializeField] private TextMeshProUGUI diceText;
 
     public IEnumerator RollDice(System.Action<int> onDiceFinished)
@@ -17,6 +17,7 @@ public class Dice : MonoBehaviour
         yield return StartCoroutine(TextDiceAnimation(animNumber));
 
         yield return new WaitForSeconds(0.5f);
+        Debug.Log($"Le dé a fait {diceResult}");
         onDiceFinished?.Invoke(diceResult);
     }
 
@@ -27,7 +28,7 @@ public class Dice : MonoBehaviour
             int animNumber = Random.Range(minResult, maxResult + 1);
             diceText.text = animNumber.ToString();
 
-            yield return new WaitForSeconds(0.05f);
+            yield return new WaitForSeconds(0.025f);
         }
 
         diceText.text = diceResult.ToString();

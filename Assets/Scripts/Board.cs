@@ -8,4 +8,9 @@ public class Board : MonoBehaviour
     {
         return cells[number];
     }
+
+    public int GetNextCellToMove(int cellNumber)
+    {      
+        return (cellNumber + 1) % cells.Length;
+    }
 } 

@@ -44,13 +44,10 @@ public class Pawn : MonoBehaviour
     {
         isMoving = true;
 
-        int lastIndex = board.cells.Length - 1; 
-        int totalCells = lastIndex + 1;
-
         for (int i = 0; i < steps; i++)
         {
             // avancer d'une case
-            playerDatas.cellNumber = (playerDatas.cellNumber + 1) % totalCells;
+            playerDatas.cellNumber = board.GetNextCellToMove(playerDatas.cellNumber);
             Transform targetCell = board.GetCellByNumber(playerDatas.cellNumber).transform;
 
             // animation vers la case
