@@ -57,7 +57,7 @@ public class Pawn : MonoBehaviour
             // petite pause entre chaque case
             yield return new WaitForSeconds(0.3f);
         }
-
+        ActivateCell();
         isMoving = false;
     }
 
@@ -77,5 +77,12 @@ public class Pawn : MonoBehaviour
         }
 
         transform.position = target;
+  
+    }
+
+    private void ActivateCell()
+    {
+        Cell cell = board.GetCellByNumber(playerDatas.cellNumber);
+        cell.Activate(this);
     }
 }
