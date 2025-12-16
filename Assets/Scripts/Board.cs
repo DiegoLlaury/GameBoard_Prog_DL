@@ -8,16 +8,21 @@ public class Board : MonoBehaviour
     public int columns = 10;
     public float cellSize = 1f;
     public float baseRadius = 10f;
+    public int referenceColumn = 0;
+    public int PlayerProgressY { get; private set; } = 0;
 
 
     public Cell[,] cells;
     public GameObject cellPrefab;
 
     public List<Cell> AllCells {  get; private set; } = new List<Cell>();
+    public static Board Instance;
 
     private void Awake()
     {
+        Instance = this;
         GenerateGrid();
+        PlayerProgressY = referenceColumn;
     }
 
 
@@ -53,8 +58,13 @@ public class Board : MonoBehaviour
                 cellObj.transform.localScale = new Vector3(scaleFactor, 1f, 1f);
 
                 Cell cell = cellObj.GetComponent<Cell>();
+
                 cell.gridX = x;
                 cell.gridY = y;
+                int dist = Mathf.Min(Mathf.Abs(y - referenceColumn),columns - Mathf.Abs(y - referenceColumn));
+
+                cell.durability = Random.Range(4, 5);
+                cell.durability = Mathf.Clamp(cell.durability, 1, 6);
 
                 cells[x, y] = cell;
                 AllCells.Add(cell);
@@ -113,5 +123,10 @@ public class Board : MonoBehaviour
     public int GetNextCellToMove(int cellNumber)
     {      
         return (cellNumber + 1) % cells.Length;
+    }
+
+    public void SetPlayerProgress(int y)
+    {
+        PlayerProgressY = (y + columns) % columns;
     }
 } 

@@ -127,6 +127,7 @@ public class Pawn : MonoBehaviour
 
         
         ActivateCell();
+        Board.Instance.SetPlayerProgress(currentY);
         isMoving = false;
         dice.TextUpdate(movementPoints);
 
