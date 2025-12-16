@@ -26,28 +26,31 @@ public class Board : MonoBehaviour
         cells = new Cell[rows, columns];
         AllCells.Clear();
 
-        //float angleStep = 360f / columns;
-    
+
+
+        float angleStep = 2f * Mathf.PI / columns;
+        int referenceRow = rows / 2;
+
+        float referenceRadius = cellSize / angleStep;
+
 
         for (int x = 0; x < rows; x++)
         {
-            float radius = baseRadius + x * cellSize;
-
-            int colsThisRow = Mathf.Max(1, Mathf.RoundToInt(2 * Mathf.PI * radius / cellSize));
-
-            float angleStep = 2 * Mathf.PI / colsThisRow;
-            //float totalAngle = angleStep * columns;
+            float radius = referenceRadius + (x - referenceRow) * cellSize;
 
             for (int y = 0; y < columns; y++)
             {
   
                 float angle = y * angleStep;
 
-                Vector3 pos = new Vector3(Mathf.Cos(angle) * radius, 0, Mathf.Sin(angle) * radius);
+                Vector3 pos = new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
 
                 Quaternion rot = Quaternion.LookRotation(pos.normalized);
 
                 GameObject cellObj = Instantiate(cellPrefab, pos, rot, transform);
+
+                float scaleFactor = radius / referenceRadius;
+                cellObj.transform.localScale = new Vector3(scaleFactor, 1f, 1f);
 
                 Cell cell = cellObj.GetComponent<Cell>();
                 cell.gridX = x;
