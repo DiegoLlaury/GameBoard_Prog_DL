@@ -2,20 +2,36 @@ using UnityEngine;
 
 public class Cell : MonoBehaviour, ICellActivable
 {
+
+    public int gridX;
+    public int gridY;
+
+    public bool isWalkable = true;
+    public bool isInMoveRange = false;
+
+    Renderer rend;
+
     public virtual void Activate(Pawn CurrentPawn)
     {
-        throw new System.NotImplementedException();
-    }
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
         
     }
 
-    // Update is called once per frame
-    void Update()
+    void Awake()
     {
-        
+        rend = GetComponent<Renderer>();
+    }
+
+    public void SetMoveRange(bool value)
+    {
+        isInMoveRange = value;
+        rend.material.color = value ? Color.red : Color.white;
+    }
+
+    void OnMouseDown()
+    {
+        if (!isInMoveRange) return;
+
+        Pawn player = FindFirstObjectByType<Pawn>();
+        player.MoveToCell(this);
     }
 }

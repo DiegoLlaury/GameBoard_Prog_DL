@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 using System.Collections;
+using System.Collections.Generic;
 
 public class Pawn : MonoBehaviour
 {
@@ -12,19 +13,41 @@ public class Pawn : MonoBehaviour
     [SerializeField] private Dice dice;
     [SerializeField] private InputAction inputAction;
 
+
+    public int currentX;
+    public int currentY;
+
+    public int movementPoints;
+
+    List<Cell> highlightedCells = new List<Cell>();
+
     private bool isMoving = false;
 
     private void Start()
     {
-        playerDatas.cellNumber = 0;
-        Transform newPos = board.GetCellByNumber(playerDatas.cellNumber).transform;
-        transform.position = newPos.position;
-        transform.rotation = newPos.rotation;
+        if (board == null)
+        {
+            Debug.LogError("Board non assigné dans le Pawn");
+            return;
+        }
+
+        if (board.cells == null)
+        {
+            Debug.LogError("La grille n'est pas encore générée");
+            return;
+        }
+
+        currentX = 0;
+        currentY = 0;
+
+        Cell startCell = board.GetCell(currentX, currentY);
+        transform.position = startCell.transform.position;
+        transform.rotation = startCell.transform.rotation;
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.E))
+        if (Input.GetKeyDown(KeyCode.E) && !isMoving)
         {
             ThrowDice();
         }
@@ -37,28 +60,78 @@ public class Pawn : MonoBehaviour
 
     private void OnDiceFinished(int result)
     {
-        StartCoroutine(MoveStepByStep(dice.diceResult));
+        movementPoints = result;
+        ShowMovementRange();
     }
 
-    private IEnumerator MoveStepByStep(int steps)
+    private void ShowMovementRange()
+    {
+        ClearMovementRange();
+
+        foreach (Cell cell in board.cells)
+        {
+            int distance = Mathf.Abs(cell.gridX - currentX) + Mathf.Abs(cell.gridY - currentY);
+
+            if (distance <= movementPoints && cell.isWalkable)
+            {
+                cell.SetMoveRange(true);
+                highlightedCells.Add(cell);
+            }
+        }
+    }
+
+    private void ClearMovementRange()
+    {
+        foreach (Cell cell in highlightedCells)
+            cell.SetMoveRange(false);
+
+        highlightedCells.Clear();
+    }
+
+    public void MoveToCell(Cell targetCell)
+    {
+        if (isMoving) return;
+
+        int distance = Mathf.Abs(targetCell.gridX - currentX) + Mathf.Abs(targetCell.gridY - currentY);
+
+        if (distance > movementPoints)
+            return;
+
+
+        ClearMovementRange();
+        StartCoroutine(MoveAlongPath(targetCell));
+        
+    }
+
+    private IEnumerator MoveAlongPath(Cell targetCell)
     {
         isMoving = true;
 
-        for (int i = 0; i < steps; i++)
+        List<Cell> path = board.GetPath(
+            currentX, currentY,
+            targetCell.gridX, targetCell.gridY
+        );
+
+        foreach (Cell cell in path)
         {
-            // avancer d'une case
-            playerDatas.cellNumber = board.GetNextCellToMove(playerDatas.cellNumber);
-            Transform targetCell = board.GetCellByNumber(playerDatas.cellNumber).transform;
+            yield return StartCoroutine(MoveToPosition(cell.transform.position, 0.25f));
 
-            // animation vers la case
-            yield return StartCoroutine(MoveToPosition(targetCell.position, 0.3f));
-            transform.rotation = targetCell.rotation;
+            transform.position = cell.transform.position;
 
-            // petite pause entre chaque case
-            yield return new WaitForSeconds(0.3f);
+            currentX = cell.gridX;
+            currentY = cell.gridY;
+
+            movementPoints--;
+            yield return new WaitForSeconds(0.1f);
         }
+
+        
         ActivateCell();
         isMoving = false;
+        dice.TextUpdate(movementPoints);
+
+        if (movementPoints > 0)
+            ShowMovementRange();
     }
 
     private IEnumerator MoveToPosition(Vector3 target, float duration)
@@ -82,7 +155,7 @@ public class Pawn : MonoBehaviour
 
     private void ActivateCell()
     {
-        Cell cell = board.GetCellByNumber(playerDatas.cellNumber);
+        Cell cell = board.GetCell(currentX, currentY);
         cell.Activate(this);
     }
 }

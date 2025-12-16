@@ -6,7 +6,7 @@ using System.Collections;
 public class Dice : MonoBehaviour
 {
     public int diceResult;
-    [SerializeField] private int minResult = 1;
+    [SerializeField] private int minResult = 4;
     [SerializeField] private int maxResult = 6;
     [SerializeField] private int animNumber = 30;
     [SerializeField] private TextMeshProUGUI diceText;
@@ -32,5 +32,10 @@ public class Dice : MonoBehaviour
         }
 
         diceText.text = diceResult.ToString();
+    }
+
+    public void TextUpdate(int movementnumberLeft)
+    {
+        diceText.text = movementnumberLeft.ToString();
     }
 }
