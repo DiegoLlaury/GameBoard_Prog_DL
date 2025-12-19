@@ -10,6 +10,7 @@ public class Board : MonoBehaviour
     public float baseRadius = 10f;
     public int referenceColumn = 0;
     public int PlayerProgressY { get; private set; } = 0;
+    public int StartColumn { get; private set; }
 
 
     public Cell[,] cells;
@@ -23,6 +24,7 @@ public class Board : MonoBehaviour
         Instance = this;
         GenerateGrid();
         PlayerProgressY = referenceColumn;
+        StartColumn = referenceColumn;
     }
 
 
