@@ -1,8 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
+using static UnityEditor.Experimental.GraphView.GraphView;
 
 public class Cell : MonoBehaviour, ICellActivable, IDurable
 {
-    public int durability = 6;
+    public int durability = 5;
     public ECellState state;
 
     public int gridX;
@@ -10,17 +13,93 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
 
     public bool isWalkable = true;
     public bool isInMoveRange = false;
+    public int WorldColumnIndex { get; private set; }
+    public ECellType contentType = ECellType.Normal;
 
-    [SerializeField] private Renderer rend;
+    [SerializeField] private Transform visualRoot;
+    protected GameObject currentVisual;
+
+    protected Renderer activeRenderer;
 
     private void Start()
     {
         TurnManager.Instance.RegisterDurable(this);
         UpdateState();
     }
+    private void Awake()
+    {
+       
+    }
+
+    public void SetVisual(GameObject prefab)
+    {
+        if (currentVisual != null)
+            Destroy(currentVisual);
+
+        if (prefab == null || visualRoot == null)
+            return;
+
+        currentVisual = Instantiate(prefab, visualRoot);
+
+        // Reset LOCAL transform (très important)
+        currentVisual.transform.localPosition = Vector3.zero;
+        currentVisual.transform.localRotation = Quaternion.identity;
+        currentVisual.transform.localScale = Vector3.one;
+
+        // Récupère le renderer du prefab
+        activeRenderer = currentVisual.GetComponentInChildren<Renderer>();
+    }
+
+    public void SetWorldColumn(int worldIndex)
+    {
+        WorldColumnIndex = worldIndex;
+    }
+
+    public List<Cell> GetNeighbors()
+    {
+        List<Cell> neighbors = new List<Cell>();
+        Board board = Board.Instance;
+
+        // Radial intérieur
+        Cell c;
+        c = board.GetCell(gridX - 1, gridY);
+        if (c != null) neighbors.Add(c);
+
+        // Radial extérieur
+        c = board.GetCell(gridX + 1, gridY);
+        if (c != null) neighbors.Add(c);
+
+        // Circulaire gauche
+        c = board.GetCell(gridX, gridY - 1);
+        if (c != null) neighbors.Add(c);
+
+        // Circulaire droite
+        c = board.GetCell(gridX, gridY + 1);
+        if (c != null) neighbors.Add(c);
+
+        return neighbors;
+    }
+
+    int GetNeighborInfection()
+    {
+        int infection = 0;
+
+        foreach (Cell n in GetNeighbors())
+        {
+            if (n.state == ECellState.Necrosed && Random.value < 0.25f)
+                infection++;
+
+            else if (n.state == ECellState.Decaying && Random.value < 0.15f)
+                infection++;
+        }
+
+        return infection;
+    }
 
     public virtual void Activate(Pawn CurrentPawn)
     {
+        
+
         switch (state)
         {
             case ECellState.Healthy:
@@ -28,73 +107,142 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
 
             case ECellState.Decaying:
                 CurrentPawn.movementPoints -= 1;
+                CurrentPawn.MovementPointUsed();
                 break;
 
             case ECellState.Necrosed:
                 CurrentPawn.movementPoints -= 2;
+                CurrentPawn.MovementPointUsed();
                 break;
         }
     }
 
     public void OnTurnPassed()
     {
-        int playerY = Board.Instance.PlayerProgressY;
-        int columns = Board.Instance.columns;
+        Board board = Board.Instance;
 
-        // Calcul de la distance derrière et devant le joueur
-        int distanceBehind = (playerY - gridY + columns) % columns; // distance dans le sens inverse du joueur
-        int distanceAhead = (gridY - playerY + columns) % columns; // distance dans le sens de déplacement du joueur
+        int cellProgress = WorldColumnIndex;
+        int playerProgress = board.PlayerProgressY;
 
-        // --- Propagation organique derrière le joueur ---
-        if (distanceBehind > 0)
+        int decay = 0;
+
+        if (cellProgress < playerProgress)
         {
-            // Plus proche = plus de chance de pourrir
-            float chanceBehind = Mathf.Clamp01(1f - distanceBehind * 0.30f);
-            if (Random.value < chanceBehind)
-                durability--;
+            int distanceBehind = playerProgress - cellProgress;
+
+            float t = Mathf.Clamp01((float)distanceBehind / board.MaxDecayDistance);
+            float decayChance = Mathf.Lerp(board.MaxDecayChance,board.MinDecayChance,t);
+
+            if (Random.value < decayChance)
+                decay = 1;
         }
 
-        // --- Propagation plus faible devant le joueur ---
-        if (distanceAhead > 0)
+        else if (cellProgress > playerProgress && cellProgress <= playerProgress + board.MaxAheadDistance)
         {
-            // Probabilité plus faible devant
-            float chanceAhead = Mathf.Clamp01(0.3f - distanceAhead * 0.1f);
-            if (Random.value < chanceAhead)
-                durability--;
+            int distanceAhead = cellProgress - playerProgress;
+            float t = Mathf.Clamp01((float)distanceAhead / board.MaxAheadDistance);
+
+            float aheadChance = Mathf.Lerp(board.MaxAheadDecayChance, board.MinAheadDecayChance, t);
+
+            aheadChance += GetNeighborInfection() * 0.05f;
+
+            if (Random.value < aheadChance)
+                decay = 1;
         }
 
-        // Clamp pour rester entre 0 et 6
+        // --- Infection par voisin ---
+        if (decay > 0)
+        {
+            decay += GetNeighborInfection();
+        }
+
+        // --- États internes (amplificateurs doux) ---
+        if (state == ECellState.Decaying && Random.value < board.DecayingBoostChance)
+        decay++;
+
+        if (state == ECellState.Necrosed && Random.value < board.NecrosedBoostChance)
+        decay++;
+
+        if (decay <= 0)
+            return; //  cette case survit ce tour
+
+        durability -= decay;
         durability = Mathf.Clamp(durability, 0, 6);
 
-        // Met à jour l'état et le rendu visuel
         UpdateState();
+
+    }
+
+    public void ApplyCellType(ECellType type)
+    {
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
+
+        if (visualRoot != null && !visualRoot.gameObject.activeSelf)
+            visualRoot.gameObject.SetActive(true);
+
+        contentType = type;
+
+        Board board = Board.Instance;
+        if (board != null && board.TryGetPrefab(type, out GameObject prefab))
+            SetVisual(prefab);
+
+        switch (type)
+        {
+            case ECellType.Normal:
+                durability = Random.Range(5, 6);
+                isWalkable = true;
+                break;
+
+            case ECellType.Obstacle:
+                isWalkable = false;
+                break;
+
+            case ECellType.Dialogue:
+                durability = 6;
+                isWalkable = true;
+                break;
+
+            case ECellType.End:
+                durability = 999;
+                isWalkable = true;
+                break;
+        }
+
+        UpdateState();    
     }
 
     public void UpdateState()
     {
         if (durability <= 0)
         {
+            state = ECellState.Destroyed;
             isWalkable = false;
-            rend.enabled = false;
-        }
-        else
-        {
-            isWalkable = true;
-            rend.enabled = true;
+
+            if (visualRoot != null)
+                visualRoot.gameObject.SetActive(false);
+
+            return;
         }
 
-        if (durability >= 4)
+        if (durability >= 5)
             state = ECellState.Healthy;
-        else if (durability >= 2)
+        else if (durability >= 3)
             state = ECellState.Decaying;
         else
             state = ECellState.Necrosed;
 
+        if (activeRenderer != null)
+            activeRenderer.enabled = true;
+
         UpdateVisual();
     }
 
-    void UpdateVisual()
+    protected virtual void UpdateVisual()
     {
+        if (activeRenderer == null)
+            return;
+
         Color baseColor;
 
         switch (state)
@@ -116,30 +264,13 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
                 break;
         }
 
-        if (isInMoveRange)
-            rend.material.color = Color.red;
-        else
-            rend.material.color = baseColor;
-
-        Debug.Log($"Cell [{gridX},{gridY}] -> {state} (durability {durability})");
-    }
-
-    void Awake()
-    {
-        rend = GetComponent<Renderer>();
+        activeRenderer.material.color =
+        isInMoveRange ? Color.red : baseColor;
     }
 
     public void SetMoveRange(bool value)
     {
-        isInMoveRange = value;
+        isInMoveRange = value && isWalkable; 
         UpdateVisual();
-    }
-
-    void OnMouseDown()
-    {
-        if (!isInMoveRange) return;
-
-        Pawn player = FindFirstObjectByType<Pawn>();
-        player.MoveToCell(this);
     }
 }

@@ -4,6 +4,8 @@ using System.Collections.Generic;
 public class TurnManager : MonoBehaviour
 {
     public static TurnManager Instance;
+    [SerializeField] private Board board;
+    [SerializeField] private Pawn player;
 
     public int currentTurn {  get; private set; } = 0;
     public bool diceUsedThisTurn { get; private set; } = false;
@@ -13,6 +15,7 @@ public class TurnManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+        StartTurn();
     }
 
     public void RegisterDurable(IDurable durable)
@@ -27,7 +30,7 @@ public class TurnManager : MonoBehaviour
     {
         currentTurn++;
         diceUsedThisTurn = false;
-
+        Debug.Log($"Can roll dice ? {!diceUsedThisTurn}");
         Debug.Log($"=== TOUR {currentTurn} ===");
     }
 
@@ -43,9 +46,27 @@ public class TurnManager : MonoBehaviour
 
     public void EndTurn()
     {
-        foreach(IDurable durable in durables)
+        foreach (IDurable durable in durables)
             durable.OnTurnPassed();
 
-        StartTurn(); 
+        board.TryAdvanceDestroyedFront();
+
+        Cell current = board.GetCell(player.currentX, player.currentY);
+
+        if (!current.isWalkable)
+        {
+            Die();
+
+        }
+    }
+
+    public void Die()
+    {
+        Debug.Log("You died");
+    }
+
+    public void Win()
+    {
+        Debug.Log("You win");
     }
 }

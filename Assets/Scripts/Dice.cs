@@ -12,7 +12,7 @@ public class Dice : MonoBehaviour, IDurable
     [SerializeField] private int animNumber = 30;
     [SerializeField] private TextMeshProUGUI diceText;
 
-    public int durability = 5;
+    public int durability = 6;
     public EnumDiceState state;
 
     private void Start()
@@ -23,11 +23,6 @@ public class Dice : MonoBehaviour, IDurable
 
     public IEnumerator RollDice(System.Action<int> onDiceFinished)
     {
-        if (!TurnManager.Instance.CanRollDice())
-            yield break;
-
-        TurnManager.Instance.DiceRolled();
-
         yield return StartCoroutine(TextDiceAnimation(animNumber));
 
         yield return new WaitForSeconds(0.5f);
@@ -42,7 +37,7 @@ public class Dice : MonoBehaviour, IDurable
         switch (state)
         {
             case EnumDiceState.Healthy:
-                return Random.Range(4, 6); // 4–6
+                return Random.Range(4, 7); // 4–6
 
             case EnumDiceState.Decaying:
                 return Random.Range(2, 5); // 2–4
@@ -78,7 +73,7 @@ public class Dice : MonoBehaviour, IDurable
 
     void UpdateState()
     {
-        if (durability >= 5)
+        if (durability >= 6)
             state = EnumDiceState.Healthy;
         else if (durability >= 3)
             state = EnumDiceState.Decaying;

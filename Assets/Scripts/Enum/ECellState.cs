@@ -4,5 +4,6 @@ public enum ECellState
 {
     Healthy,     // Beige
     Decaying,    // Vert
-    Necrosed     // Noir
+    Necrosed,     // Noir
+    Destroyed
 }

@@ -14,8 +14,9 @@ public class Pawn : MonoBehaviour
     [SerializeField] private InputAction inputAction;
 
 
-    public int currentX;
+    public int currentX = 3;
     public int currentY;
+    public int currentWorldColumn;
 
     public int movementPoints;
 
@@ -37,24 +38,56 @@ public class Pawn : MonoBehaviour
             return;
         }
 
-        currentX = 0;
-        currentY = 0;
+        currentX = board.rows / 2;
+        currentY = board.referenceColumn % board.columns;
 
         Cell startCell = board.GetCell(currentX, currentY);
+        currentWorldColumn = startCell.WorldColumnIndex;
+
         transform.position = startCell.transform.position;
         transform.rotation = startCell.transform.rotation;
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.E) && !isMoving)
+        if (isMoving)
+            return;
+
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            TryClickCell();
+        }
+
+        if (Keyboard.current.eKey.wasPressedThisFrame)
         {
             ThrowDice();
         }
     }
 
+    void TryClickCell()
+    {
+        Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
+        if (!Physics.Raycast(ray, out RaycastHit hit))
+            return;
+
+        Cell cell = hit.collider.GetComponentInParent<Cell>();
+        if (cell == null)
+            return;
+
+        if (!cell.isInMoveRange || !cell.isWalkable)
+            return;
+
+        MoveToCell(cell);
+    }
+
     public void ThrowDice()
     {
+        if (!TurnManager.Instance.CanRollDice())
+            return;
+
+        TurnManager.Instance.DiceRolled();
+
+        movementPoints = 0;
         StartCoroutine(dice.RollDice(OnDiceFinished));       
     }
 
@@ -68,11 +101,24 @@ public class Pawn : MonoBehaviour
     {
         ClearMovementRange();
 
-        foreach (Cell cell in board.cells)
+        foreach (Cell cell in board.AllCells)
         {
-            int distance = Mathf.Abs(cell.gridX - currentX) + Mathf.Abs(cell.gridY - currentY);
+            if (!cell.isWalkable)
+                continue;
 
-            if (distance <= movementPoints && cell.isWalkable)
+            if (cell.WorldColumnIndex < currentWorldColumn - 1)
+                continue;
+
+            int worldDistance = cell.WorldColumnIndex - currentWorldColumn;
+
+            if (worldDistance > movementPoints)
+                continue;
+
+            List<Cell> path = board.GetPath(currentX, currentY, cell.gridX, cell.gridY);
+
+            Debug.Log($"Checking cell ({cell.gridX},{cell.gridY}) walkable={cell.isWalkable} pathCount={path.Count}");
+
+            if (path.Count > 0 && path.Count <= movementPoints || cell.contentType == ECellType.Dialogue)
             {
                 cell.SetMoveRange(true);
                 highlightedCells.Add(cell);
@@ -92,34 +138,28 @@ public class Pawn : MonoBehaviour
     {
         if (isMoving) return;
 
-        int distance = Mathf.Abs(targetCell.gridX - currentX) + Mathf.Abs(targetCell.gridY - currentY);
+        List<Cell> path = board.GetPath(currentX, currentY, targetCell.gridX, targetCell.gridY);
 
-        if (distance > movementPoints)
+        if (path.Count == 0 || path.Count > movementPoints)
             return;
 
 
         ClearMovementRange();
-        StartCoroutine(MoveAlongPath(targetCell));
+        StartCoroutine(MoveAlongPath(path));
         
     }
 
-    private IEnumerator MoveAlongPath(Cell targetCell)
+    private IEnumerator MoveAlongPath(List<Cell> path)
     {
         isMoving = true;
-
-        List<Cell> path = board.GetPath(
-            currentX, currentY,
-            targetCell.gridX, targetCell.gridY
-        );
 
         foreach (Cell cell in path)
         {
             yield return StartCoroutine(MoveToPosition(cell.transform.position, 0.25f));
 
-            transform.position = cell.transform.position;
-
             currentX = cell.gridX;
             currentY = cell.gridY;
+            currentWorldColumn = cell.WorldColumnIndex;
 
             movementPoints--;
             yield return new WaitForSeconds(0.1f);
@@ -127,12 +167,19 @@ public class Pawn : MonoBehaviour
 
         
         ActivateCell();
-        Board.Instance.SetPlayerProgress(currentY);
+        Board.Instance.SetPlayerProgress(currentWorldColumn);
+
         isMoving = false;
         dice.TextUpdate(movementPoints);
 
         if (movementPoints > 0)
             ShowMovementRange();
+
+        if (movementPoints <= 0)
+        {
+            TurnManager.Instance.EndTurn();
+            TurnManager.Instance.StartTurn();
+        }
     }
 
     private IEnumerator MoveToPosition(Vector3 target, float duration)
@@ -158,5 +205,10 @@ public class Pawn : MonoBehaviour
     {
         Cell cell = board.GetCell(currentX, currentY);
         cell.Activate(this);
+    }
+
+    public void MovementPointUsed()
+    {
+        dice.TextUpdate(movementPoints);
     }
 }
