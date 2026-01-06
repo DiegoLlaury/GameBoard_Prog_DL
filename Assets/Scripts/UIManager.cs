@@ -20,11 +20,11 @@ public class UIManager : MonoBehaviour
     [Header("Navigation")]
     [SerializeField] private Button nextButton;
 
-    private DialogueCell currentCell;
+    private Cell currentCell;
 
     private void Awake() { Instance = this; }
 
-    public void ShowDialogue(string text, string charName, Sprite charSprite, DialogueDatas.DialogueChoice[] choices, DialogueCell cell)
+    public void ShowDialogue(string text, string charName, Sprite charSprite, DialogueDatas.DialogueChoice[] choices, Cell cell)
     {
         dialoguePanel.SetActive(true);
         characterNameText.text = charName;
@@ -54,6 +54,7 @@ public class UIManager : MonoBehaviour
                 CloseDialogue();
             });            
         }
+
 
         nextButton.onClick.RemoveAllListeners();
         nextButton.onClick.AddListener(() =>

@@ -21,6 +21,10 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
 
     protected Renderer activeRenderer;
 
+    public DialogueDatas dialogueData;
+    public bool dialogueFinished = false;
+    public int dialogueIndex = 0;
+
     private void Start()
     {
         TurnManager.Instance.RegisterDurable(this);
@@ -98,7 +102,11 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
 
     public virtual void Activate(Pawn CurrentPawn)
     {
-        
+        if (contentType == ECellType.Dialogue && dialogueData != null)
+        {
+            ActivateDialogue();
+            return;
+        }
 
         switch (state)
         {
@@ -115,6 +123,44 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
                 CurrentPawn.MovementPointUsed();
                 break;
         }
+    }
+
+    void ActivateDialogue()
+    {
+        if (dialogueFinished)
+        {
+            UIManager.Instance.ShowDialogue(
+                dialogueData.dialogues[^1],
+                dialogueData.characterName,
+                dialogueData.characterImage,
+                new DialogueDatas.DialogueChoice[0],
+                this
+            );
+            return;
+        }
+
+        ShowNextDialogue();
+    }
+
+    public void ShowNextDialogue()
+    {
+        if (dialogueIndex >= dialogueData.dialogues.Length)
+        {
+            dialogueFinished = true;
+            dialogueIndex = dialogueData.dialogues.Length - 1;
+            UIManager.Instance.CloseDialogue();
+            return;
+        }
+
+        UIManager.Instance.ShowDialogue(
+            dialogueData.dialogues[dialogueIndex],
+            dialogueData.characterName,
+            dialogueData.characterImage,
+            dialogueData.choices,
+            this
+        );
+
+        dialogueIndex++;
     }
 
     public void OnTurnPassed()

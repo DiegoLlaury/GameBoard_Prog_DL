@@ -36,6 +36,7 @@ public class TurnManager : MonoBehaviour
 
     public bool CanRollDice()
     {
+        Debug.Log("IsWorking");
         return !diceUsedThisTurn;
     }
 

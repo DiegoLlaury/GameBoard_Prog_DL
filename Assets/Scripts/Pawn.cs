@@ -22,7 +22,9 @@ public class Pawn : MonoBehaviour
 
     List<Cell> highlightedCells = new List<Cell>();
 
-    private bool isMoving = false;
+    public bool isMoving = false;
+    public bool IsUsingDice { get; private set; }
+    private Dice currentDice;
 
     private void Start()
     {
@@ -39,7 +41,7 @@ public class Pawn : MonoBehaviour
         }
 
         currentX = board.rows / 2;
-        currentY = board.referenceColumn % board.columns;
+        currentY = (board.referenceColumn % board.columns) + 2;
 
         Cell startCell = board.GetCell(currentX, currentY);
         currentWorldColumn = startCell.WorldColumnIndex;
@@ -50,17 +52,12 @@ public class Pawn : MonoBehaviour
 
     private void Update()
     {
-        if (isMoving)
+        if (isMoving || IsUsingDice)
             return;
 
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
             TryClickCell();
-        }
-
-        if (Keyboard.current.eKey.wasPressedThisFrame)
-        {
-            ThrowDice();
         }
     }
 
@@ -80,15 +77,22 @@ public class Pawn : MonoBehaviour
         MoveToCell(cell);
     }
 
-    public void ThrowDice()
+    public void UseDice(Dice dice)
     {
-        if (!TurnManager.Instance.CanRollDice())
+        if (IsUsingDice)
             return;
 
-        TurnManager.Instance.DiceRolled();
+        IsUsingDice = true;
+        currentDice = dice;
 
         movementPoints = 0;
-        StartCoroutine(dice.RollDice(OnDiceFinished));       
+
+    }
+
+    public void StartMovement(int movement)
+    {
+        movementPoints = movement;
+        ShowMovementRange();
     }
 
     private void OnDiceFinished(int result)
@@ -118,7 +122,7 @@ public class Pawn : MonoBehaviour
 
             Debug.Log($"Checking cell ({cell.gridX},{cell.gridY}) walkable={cell.isWalkable} pathCount={path.Count}");
 
-            if (path.Count > 0 && path.Count <= movementPoints || cell.contentType == ECellType.Dialogue)
+            if (path.Count > 0 && path.Count <= movementPoints)
             {
                 cell.SetMoveRange(true);
                 highlightedCells.Add(cell);
@@ -170,13 +174,15 @@ public class Pawn : MonoBehaviour
         Board.Instance.SetPlayerProgress(currentWorldColumn);
 
         isMoving = false;
-        dice.TextUpdate(movementPoints);
 
         if (movementPoints > 0)
             ShowMovementRange();
 
         if (movementPoints <= 0)
         {
+            IsUsingDice = false;
+            //DiceInventoryUI.Instance.ClearActiveDice();
+
             TurnManager.Instance.EndTurn();
             TurnManager.Instance.StartTurn();
         }
@@ -209,6 +215,6 @@ public class Pawn : MonoBehaviour
 
     public void MovementPointUsed()
     {
-        dice.TextUpdate(movementPoints);
+        
     }
 }

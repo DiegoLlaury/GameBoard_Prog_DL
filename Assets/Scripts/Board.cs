@@ -24,7 +24,9 @@ public class Board : MonoBehaviour
     [SerializeField] private int minEventGap = 4;
     [SerializeField] private int maxEventGap = 7;
     private int nextEventColumn = -1;
-    
+    private bool generationStopped = false;
+    private Dictionary<int, int> goldenPath = new Dictionary<int, int>();
+
     private int safeRow = -1;
     [SerializeField] private int safeRowChangeChance = 30; // %
 
@@ -97,6 +99,7 @@ public class Board : MonoBehaviour
             WorldColumnIndex[i] = -1;
 
         highestGeneratedWorldColumn = referenceColumn;
+        GenerateGoldenPath();
 
         // génération initiale
         for (int i = 0; i < columns; i++)
@@ -104,6 +107,34 @@ public class Board : MonoBehaviour
             GenerateColumn(highestGeneratedWorldColumn);
             highestGeneratedWorldColumn++;
         }
+    }
+
+    void GenerateGoldenPath()
+    {
+        goldenPath.Clear();
+
+        int currentRow = rows / 2;
+
+        for (int world = StartColumn; world <= LevelLength; world++)
+        {
+            goldenPath[world] = currentRow;
+
+            // variation douce
+            if (Random.value < 0.3f)
+            {
+                currentRow += Random.Range(-1, 2);
+                currentRow = Mathf.Clamp(currentRow, 0, rows - 1);
+            }
+        }
+    }
+
+    void EnsureGoldenPath(int worldColumn, int physicalY)
+    {
+        if (!goldenPath.ContainsKey(worldColumn))
+            return;
+
+        int safeX = goldenPath[worldColumn];
+        cells[safeX, physicalY].ApplyCellType(ECellType.Normal);
     }
 
 
@@ -151,6 +182,12 @@ public class Board : MonoBehaviour
 
     public void GenerateColumn(int worldColumnIndex)
     {
+        if (generationStopped)
+            return;
+
+        if (worldColumnIndex > highestGeneratedWorldColumn + 3)
+            return;
+
         if (worldColumnIndex <= DestroyedUntil)
             return;
 
@@ -184,6 +221,7 @@ public class Board : MonoBehaviour
         {
             PlaceEndCell(physicalY);
             endPlaced = true;
+            generationStopped = true;
             return;
         }
 
@@ -217,21 +255,60 @@ public class Board : MonoBehaviour
         }
         if (Random.value < 0.4f)
             PlaceObstacleCluster(physicalY);
-        
-        bool hasPath = false;
+
+        bool hasValidPath = false;
+
         for (int x = 0; x < rows; x++)
         {
-            if (cells[x, physicalY].isWalkable)
+            Cell current = cells[x, physicalY];
+            Cell prev = cells[x, (physicalY - 1 + columns) % columns];
+
+            if (current.isWalkable && prev.isWalkable)
             {
-                hasPath = true;
+                hasValidPath = true;
                 break;
             }
         }
 
-        if (!hasPath)
+        if (!hasValidPath)
         {
             cells[safeRow, physicalY].ApplyCellType(ECellType.Normal);
         }
+
+        highestGeneratedWorldColumn = Mathf.Max(
+        highestGeneratedWorldColumn,
+        worldColumnIndex
+        );
+
+        EnsureGoldenPath(worldColumnIndex, physicalY);
+
+        if (goldenPath.TryGetValue(worldColumnIndex, out int pathX))
+        {
+            Cell pathCell = cells[pathX, physicalY];
+
+            if (!HasWalkableNeighbor(pathX, physicalY))
+            {
+                int rescueRow = Mathf.Clamp(pathX + Random.Range(-1, 2), 0, rows - 1);
+                cells[rescueRow, physicalY].ApplyCellType(ECellType.Normal);
+            }
+        }
+    }
+
+    bool HasWalkableNeighbor(int x, int y)
+    {
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                if (dx == 0 && dy == 0)
+                    continue;
+
+                Cell c = GetCell(x + dx, y + dy);
+                if (c != null && c.isWalkable)
+                    return true;
+            }
+        }
+        return false;
     }
 
     public bool TryGetPrefab(ECellType type, out GameObject prefab)
@@ -282,7 +359,7 @@ public class Board : MonoBehaviour
             if (cell == null || cell.state == ECellState.Destroyed)
                 return new List<Cell>();
 
-            if (cell == null || (!cell.isWalkable && cell.contentType != ECellType.Dialogue) || cell.state == ECellState.Destroyed)
+            if (cell == null || !cell.isWalkable || cell.state == ECellState.Destroyed)
                 return new List<Cell>();
 
             path.Add(cell);
@@ -314,6 +391,9 @@ public class Board : MonoBehaviour
 
     public void AdvanceDestroyedFront()
     {
+        if (generationStopped)
+            return;
+
         DestroyedUntil++;
 
         int physicalY = DestroyedUntil % columns;
@@ -348,6 +428,12 @@ public class Board : MonoBehaviour
 
         foreach (int x in blockedRows)
         {
+            if (goldenPath.TryGetValue(cells[x, y].WorldColumnIndex, out int safeX))
+            {
+                if (x == safeX)
+                    continue; 
+            }
+
             Cell cell = cells[x, y];
 
             if (cell.WorldColumnIndex <= PlayerProgressY)
@@ -360,55 +446,19 @@ public class Board : MonoBehaviour
     void PlaceDialogueCell(int y)
     {
         int x = Random.Range(0, rows);
+        Cell cell = cells[x, y];
 
-        Cell oldCell = cells[x, y];
-        GameObject go = oldCell.gameObject;
+        cell.ApplyCellType(ECellType.Dialogue);
 
-        Debug.Log($"[DIALOGUE] colonne {cells[x, y].WorldColumnIndex} row {x}");
-
-        // Sauvegarde des données importantes
-        int gridX = oldCell.gridX;
-        int gridY = oldCell.gridY;
-        int worldColumn = oldCell.WorldColumnIndex;
-        Transform visualRoot = oldCell.transform.Find("VisualRoot");
-
-        if (visualRoot != null)
-        {
-            foreach (Transform child in visualRoot)
-                Destroy(child.gameObject);
-        }
-
-        // Supprimer l'ancien composant Cell
-        Destroy(oldCell);
-
-        // Ajouter le DialogueCell
-        DialogueCell dlgCell = go.AddComponent<DialogueCell>();
-
-        // Réassigner les données
-        dlgCell.gridX = gridX;
-        dlgCell.gridY = gridY;
-        dlgCell.SetWorldColumn(worldColumn);
-
-        typeof(Cell)
-        .GetField("visualRoot", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-        ?.SetValue(dlgCell, visualRoot);
-
-        // Appliquer le type
-        dlgCell.ApplyCellType(ECellType.Dialogue);
-
-        // Assigner un dialogue
         if (dialoguePool.Length > 0)
-        {
-            dlgCell.dialogueData = dialoguePool[Random.Range(0, dialoguePool.Length)];
-        }
+            cell.dialogueData = dialoguePool[Random.Range(0, dialoguePool.Length)];
 
-        cells[x, y] = dlgCell;
-
+        // sécurité : le reste de la colonne reste praticable
         for (int i = 0; i < rows; i++)
         {
             if (i == x) continue;
-
-            cells[i, y].ApplyCellType(ECellType.Normal);
+            if (!cells[i, y].isWalkable)
+                cells[i, y].ApplyCellType(ECellType.Normal);
         }
     }
 

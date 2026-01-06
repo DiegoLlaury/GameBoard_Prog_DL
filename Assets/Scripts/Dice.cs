@@ -2,6 +2,7 @@
 using TMPro;
 using Unity.IO.LowLevel.Unsafe;
 using UnityEngine;
+using UnityEngine.UI;
 
 
 public class Dice : MonoBehaviour, IDurable
@@ -10,7 +11,12 @@ public class Dice : MonoBehaviour, IDurable
     [SerializeField] private int minResult = 4;
     [SerializeField] private int maxResult = 6;
     [SerializeField] private int animNumber = 30;
-    [SerializeField] private TextMeshProUGUI diceText;
+    [SerializeField] public Sprite diceHealthyImg;
+    [SerializeField] public Sprite diceDecayingImg;
+    [SerializeField] public Sprite diceRottenImg;
+
+    private bool isInteractable = true;
+
 
     public int durability = 6;
     public EnumDiceState state;
@@ -21,11 +27,9 @@ public class Dice : MonoBehaviour, IDurable
         UpdateState();
     }
 
-    public IEnumerator RollDice(System.Action<int> onDiceFinished)
+    public void RollDice(System.Action<int> onDiceFinished)
     {
-        yield return StartCoroutine(TextDiceAnimation(animNumber));
 
-        yield return new WaitForSeconds(0.5f);
 
         diceResult = RollBasedOnState();
         Debug.Log($"Le dé a fait {diceResult}");
@@ -46,23 +50,10 @@ public class Dice : MonoBehaviour, IDurable
                 return Random.Range(1, 3); // 1–2
 
             case EnumDiceState.Reduced:
-                return 1; // dé brisé mais encore utilisable
+                return Random.Range(1, 3); // dé brisé mais encore utilisable
         }
 
         return 1;
-    }
-
-    private IEnumerator TextDiceAnimation(int NumberRandom)
-    {
-        for (int i = 0; i < NumberRandom; i++)
-        {
-            int animNumber = Random.Range(minResult, maxResult + 1);
-            diceText.text = animNumber.ToString();
-
-            yield return new WaitForSeconds(0.025f);
-        }
-
-        diceText.text = diceResult.ToString();
     }
 
     public void OnTurnPassed()
@@ -83,10 +74,5 @@ public class Dice : MonoBehaviour, IDurable
             state = EnumDiceState.Reduced;
 
         Debug.Log($"Dé → {state} ({durability})");
-    }
-
-    public void TextUpdate(int movementnumberLeft)
-    {
-        diceText.text = movementnumberLeft.ToString();
     }
 }
