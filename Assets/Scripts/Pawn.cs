@@ -180,7 +180,6 @@ public class Pawn : MonoBehaviour
         if (movementPoints <= 0)
         {
             IsUsingDice = false;
-            //DiceInventoryUI.Instance.ClearActiveDice();
 
             TurnManager.Instance.EndTurn();
             TurnManager.Instance.StartTurn();

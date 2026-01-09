@@ -4,6 +4,7 @@ using UnityEngine;
 public class PlayerDatas : ScriptableObject
 {
     [SerializeField] public int cellNumber = 0;
+    public int fleshNumber;
 
 
 

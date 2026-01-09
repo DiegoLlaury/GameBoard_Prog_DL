@@ -48,7 +48,7 @@ public class Board : MonoBehaviour
 
     [Header("Coord Reference")]
     public int PlayerProgressY { get; private set; } = 0;
-    public int StartColumn { get; private set; }
+    public int StartColumn { get; private set; } = 0;
     public int DestroyedUntil { get; private set; }
     public int[] WorldColumnIndex;
     private int highestGeneratedWorldColumn;
@@ -153,7 +153,11 @@ public class Board : MonoBehaviour
                 if (!neighbor.isWalkable || neighbor.state == ECellState.Destroyed)
                     continue;
 
-                if (neighbor.WorldColumnIndex < current.cell.WorldColumnIndex)
+                if (neighbor.WorldColumnIndex < StartColumn)
+                    continue;
+
+                if (current.cell.WorldColumnIndex == StartColumn &&
+                neighbor.WorldColumnIndex > current.cell.WorldColumnIndex)
                     continue;
 
                 if (visited.ContainsKey(neighbor))

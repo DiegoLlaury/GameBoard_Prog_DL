@@ -985,8 +985,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c5470d8e4d3a704abc11577cebaac35, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rows: 5
-  columns: 40
+  rows: 6
+  columns: 100
   cellSize: 1.1
   cellPrefab: {fileID: 4259072821437750950, guid: 2c1d06636c7ac0745aacfbdade7ec2d9, type: 3}
   referenceColumn: 0

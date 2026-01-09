@@ -20,6 +20,9 @@ public class UIManager : MonoBehaviour
     [Header("Navigation")]
     [SerializeField] private Button nextButton;
 
+    [Header("Ressource")]
+    [SerializeField] private TextMeshProUGUI fleshNumberText; 
+
     private Cell currentCell;
 
     private void Awake() { Instance = this; }
@@ -74,6 +77,11 @@ public class UIManager : MonoBehaviour
             dialogueText.text += c;
             yield return new WaitForSeconds(0.02f); // vitesse du fade/typing
         }
+    }
+
+    public void UpdateFlesh(int currentFleshNumber)
+    {
+        fleshNumberText.text = currentFleshNumber.ToString();
     }
 
     public void CloseDialogue()
