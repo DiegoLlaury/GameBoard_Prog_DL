@@ -553,10 +553,10 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 319914447}
+  - {fileID: 192880698}
   - {fileID: 850023979}
   - {fileID: 283740464}
   - {fileID: 296234048}
-  - {fileID: 192880698}
   m_Father: {fileID: 457656733}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -986,7 +986,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rows: 5
-  columns: 100
+  columns: 40
   cellSize: 1.1
   cellPrefab: {fileID: 4259072821437750950, guid: 2c1d06636c7ac0745aacfbdade7ec2d9, type: 3}
   referenceColumn: 0
@@ -997,16 +997,16 @@ MonoBehaviour:
   firstEventColumn: 5
   minEventGap: 4
   maxEventGap: 7
-  safeRowChangeChance: 40
+  safeRowChangeChance: 50
   WorldColumnIndex: 
   dialoguePool:
   - {fileID: 11400000, guid: 2eca08c11613ffa47b69639c6d481fbe, type: 2}
-  MaxDecayDistance: 5
+  MaxDecayDistance: 10
   MinDecayChance: 0.25
   MaxDecayChance: 0.75
   DecayingBoostChance: 0.25
-  NecrosedBoostChance: 0.45
-  NeighborDecayChance: 0.4
+  NecrosedBoostChance: 0.7
+  NeighborDecayChance: 0.6
   MaxAheadDistance: 6
   MinAheadDecayChance: 0.02
   MaxAheadDecayChance: 0.15
@@ -2761,8 +2761,8 @@ SceneRoots:
   m_Roots:
   - {fileID: 1123247477}
   - {fileID: 1358122614}
+  - {fileID: 457656733}
   - {fileID: 512951853}
   - {fileID: 3792841837122668845}
   - {fileID: 1115768754}
-  - {fileID: 457656733}
   - {fileID: 1472468980}

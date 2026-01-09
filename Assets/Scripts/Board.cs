@@ -3,6 +3,20 @@ using System.Data;
 using UnityEngine;
 using static UnityEngine.GraphicsBuffer;
 
+public class BFSNode
+{
+    public Cell cell;
+    public int cost;
+    public BFSNode parent;
+
+    public BFSNode(Cell cell, int cost, BFSNode parent)
+    {
+        this.cell = cell;
+        this.cost = cost;
+        this.parent = parent;
+    }
+}
+
 public class Board : MonoBehaviour
 {
     [Header("Grid")]
@@ -107,6 +121,82 @@ public class Board : MonoBehaviour
             GenerateColumn(highestGeneratedWorldColumn);
             highestGeneratedWorldColumn++;
         }
+    }
+
+    public Dictionary<Cell, BFSNode> GetReachableCells(
+    int startX,
+    int startY,
+    int maxCost
+)
+    {
+        Dictionary<Cell, BFSNode> visited = new();
+        Queue<BFSNode> queue = new();
+
+        Cell start = GetCell(startX, startY);
+        BFSNode startNode = new BFSNode(start, 0, null);
+
+        queue.Enqueue(startNode);
+        visited[start] = startNode;
+
+        while (queue.Count > 0)
+        {
+            BFSNode current = queue.Dequeue();
+
+            if (current.cost >= maxCost)
+                continue;
+
+            foreach (Cell neighbor in GetNeighbors(current.cell))
+            {
+                if (neighbor == null)
+                    continue;
+
+                if (!neighbor.isWalkable || neighbor.state == ECellState.Destroyed)
+                    continue;
+
+                if (neighbor.WorldColumnIndex < current.cell.WorldColumnIndex)
+                    continue;
+
+                if (visited.ContainsKey(neighbor))
+                    continue;
+
+                BFSNode next = new BFSNode(
+                    neighbor,
+                    current.cost + 1,
+                    current
+                );
+
+                visited[neighbor] = next;
+                queue.Enqueue(next);
+            }
+        }
+
+        return visited;
+    }
+
+    IEnumerable<Cell> GetNeighbors(Cell cell)
+    {
+        int x = cell.gridX;
+        int y = cell.gridY;
+
+        yield return GetCell(x + 1, y);
+        yield return GetCell(x - 1, y);
+
+        yield return GetCell(x, y + 1);
+        yield return GetCell(x, y - 1);
+    }
+
+    public List<Cell> ReconstructPath(BFSNode node)
+    {
+        List<Cell> path = new();
+
+        while (node.parent != null)
+        {
+            path.Add(node.cell);
+            node = node.parent;
+        }
+
+        path.Reverse();
+        return path;
     }
 
     void GenerateGoldenPath()
@@ -326,48 +416,6 @@ public class Board : MonoBehaviour
         return cells[x, y];
     }
 
-    public List<Cell> GetPath(int startX, int startY, int targetX, int targetY)
-    {
-        List<Cell> path = new List<Cell>();
-
-        int x = startX;
-        int y = startY;
-
-        int safety = rows * columns; // anti-boucle infinie
-
-        while ((x != targetX || y != targetY) && safety-- > 0)
-        {
-            // déplacement radial
-            if (x != targetX)
-            {
-                x += (x < targetX) ? 1 : -1;
-            }
-            else
-            {
-                // déplacement circulaire LE PLUS COURT
-                int right = (targetY - y + columns) % columns;
-                int left = (y - targetY + columns) % columns;
-
-                if (right <= left)
-                    y = (y + 1) % columns;
-                else
-                    y = (y - 1 + columns) % columns;
-            }
-
-            Cell cell = GetCell(x, y);
-
-            if (cell == null || cell.state == ECellState.Destroyed)
-                return new List<Cell>();
-
-            if (cell == null || !cell.isWalkable || cell.state == ECellState.Destroyed)
-                return new List<Cell>();
-
-            path.Add(cell);
-        }
-
-        return path;
-    }
-
     public void SetPlayerProgress(int worldColumn)
     {
         if (worldColumn > PlayerProgressY)
@@ -422,7 +470,7 @@ public class Board : MonoBehaviour
             if (x == safeRow)
                 continue;
 
-            if (Random.value < 0.5f)
+            if (Random.value < 0.7f)
                 blockedRows.Add(x);
         }
 

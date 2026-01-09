@@ -31,7 +31,8 @@ public class DiceUI : MonoBehaviour
 
     public void Refresh()
     {
-        diceText.text = dice.durability.ToString();
+        diceText.text = dice.durability <= 0 ? "X" : dice.durability.ToString();
+        button.interactable = true;
 
         switch (dice.state)
         {
@@ -42,6 +43,8 @@ public class DiceUI : MonoBehaviour
                 diceImage.sprite = dice.diceDecayingImg;
                 break;
             case EnumDiceState.Rotten:
+                diceImage.sprite = dice.diceRottenImg;
+                break;
             case EnumDiceState.Reduced:
                 diceImage.sprite = dice.diceRottenImg;
                 break;
@@ -50,23 +53,16 @@ public class DiceUI : MonoBehaviour
 
     public IEnumerator RollAndUse(Pawn pawn)
     {
-        // Animation visuelle
-        for (int i = 0; i < 20; i++)
-        {
-            diceText.text = Random.Range(1, 7).ToString();
-            yield return new WaitForSeconds(0.03f);
-        }
 
-        dice.Roll(result =>
+        dice.RollDice(result =>
         {
-            diceText.text = result.ToString();
             pawn.StartMovement(result);
         });
 
         // Attendre la fin du déplacement
-        while (pawn.IsMoving)
+        while (pawn.isMoving)
             yield return null;
 
-        DiceInventoryUI.Instance.RemoveDice(this);
+        Refresh();
     }
 }

@@ -91,7 +91,7 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
         foreach (Cell n in GetNeighbors())
         {
             if (n.state == ECellState.Necrosed && Random.value < 0.25f)
-                infection++;
+                infection += 2;
 
             else if (n.state == ECellState.Decaying && Random.value < 0.15f)
                 infection++;
@@ -177,7 +177,7 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
             int distanceBehind = playerProgress - cellProgress;
 
             float t = Mathf.Clamp01((float)distanceBehind / board.MaxDecayDistance);
-            float decayChance = Mathf.Lerp(board.MaxDecayChance,board.MinDecayChance,t);
+            float decayChance = Mathf.Lerp(board.MinDecayChance,board.MaxDecayChance,t);
 
             if (Random.value < decayChance)
                 decay = 1;

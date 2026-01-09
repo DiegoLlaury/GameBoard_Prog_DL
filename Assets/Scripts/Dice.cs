@@ -29,10 +29,12 @@ public class Dice : MonoBehaviour, IDurable
 
     public void RollDice(System.Action<int> onDiceFinished)
     {
-
-
         diceResult = RollBasedOnState();
         Debug.Log($"Le dé a fait {diceResult}");
+
+        durability = Mathf.Max(0, durability - 1);
+        UpdateState();
+
         onDiceFinished?.Invoke(diceResult);
     }
 
@@ -50,7 +52,7 @@ public class Dice : MonoBehaviour, IDurable
                 return Random.Range(1, 3); // 1–2
 
             case EnumDiceState.Reduced:
-                return Random.Range(1, 3); // dé brisé mais encore utilisable
+                return Random.Range(1, 2); // dé brisé mais encore utilisable
         }
 
         return 1;
@@ -58,13 +60,12 @@ public class Dice : MonoBehaviour, IDurable
 
     public void OnTurnPassed()
     {
-        durability--;
         UpdateState();
     }
 
     void UpdateState()
     {
-        if (durability >= 6)
+        if (durability >= 5)
             state = EnumDiceState.Healthy;
         else if (durability >= 3)
             state = EnumDiceState.Decaying;

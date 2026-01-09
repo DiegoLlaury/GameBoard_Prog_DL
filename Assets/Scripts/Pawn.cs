@@ -24,7 +24,10 @@ public class Pawn : MonoBehaviour
 
     public bool isMoving = false;
     public bool IsUsingDice { get; private set; }
+
+
     private Dice currentDice;
+    private Dictionary<Cell, BFSNode> reachable;
 
     private void Start()
     {
@@ -103,30 +106,24 @@ public class Pawn : MonoBehaviour
 
     private void ShowMovementRange()
     {
+        if (movementPoints <= 0)
+            return;
+
         ClearMovementRange();
 
-        foreach (Cell cell in board.AllCells)
+        reachable = board.GetReachableCells(
+            currentX,
+            currentY,
+            movementPoints
+        );
+
+        foreach (var kvp in reachable)
         {
-            if (!cell.isWalkable)
+            if (kvp.Value.cost == 0)
                 continue;
 
-            if (cell.WorldColumnIndex < currentWorldColumn - 1)
-                continue;
-
-            int worldDistance = cell.WorldColumnIndex - currentWorldColumn;
-
-            if (worldDistance > movementPoints)
-                continue;
-
-            List<Cell> path = board.GetPath(currentX, currentY, cell.gridX, cell.gridY);
-
-            Debug.Log($"Checking cell ({cell.gridX},{cell.gridY}) walkable={cell.isWalkable} pathCount={path.Count}");
-
-            if (path.Count > 0 && path.Count <= movementPoints)
-            {
-                cell.SetMoveRange(true);
-                highlightedCells.Add(cell);
-            }
+            kvp.Key.SetMoveRange(true);
+            highlightedCells.Add(kvp.Key);
         }
     }
 
@@ -140,17 +137,19 @@ public class Pawn : MonoBehaviour
 
     public void MoveToCell(Cell targetCell)
     {
-        if (isMoving) return;
-
-        List<Cell> path = board.GetPath(currentX, currentY, targetCell.gridX, targetCell.gridY);
-
-        if (path.Count == 0 || path.Count > movementPoints)
+        if (isMoving)
             return;
 
+        if (!reachable.ContainsKey(targetCell))
+            return;
+
+        List<Cell> path = board.ReconstructPath(reachable[targetCell]);
+
+        if (path.Count > movementPoints)
+            return;
 
         ClearMovementRange();
         StartCoroutine(MoveAlongPath(path));
-        
     }
 
     private IEnumerator MoveAlongPath(List<Cell> path)
