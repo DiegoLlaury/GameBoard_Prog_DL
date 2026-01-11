@@ -19,12 +19,15 @@ public class BFSNode
 
 public class Board : MonoBehaviour
 {
+    #region Grid configuration
     [Header("Grid")]
     public int rows = 5;
     public int columns = 10;
     public float cellSize = 1f;
     public GameObject cellPrefab;
+    #endregion
 
+    #region Level generation
     [Header("Level")]
     public int referenceColumn = 0;
     [SerializeField] private int LevelLength = 50;
@@ -40,10 +43,12 @@ public class Board : MonoBehaviour
     private int nextEventColumn = -1;
     private bool generationStopped = false;
     private Dictionary<int, int> goldenPath = new Dictionary<int, int>();
+    #endregion
 
     private int safeRow = -1;
     [SerializeField] private int safeRowChangeChance = 30; // %
 
+    #region Coordinates & world indices
     private bool endPlaced = false;
 
     [Header("Coord Reference")]
@@ -52,9 +57,10 @@ public class Board : MonoBehaviour
     public int DestroyedUntil { get; private set; }
     public int[] WorldColumnIndex;
     private int highestGeneratedWorldColumn;
+    #endregion
 
+    #region Pools & balancing
     [Header("Data Pool")]
-
     [SerializeField] private DialogueDatas[] dialoguePool;
 
     [Header("Decay Balancing")]
@@ -71,6 +77,7 @@ public class Board : MonoBehaviour
     public int MaxAheadDistance = 6;          // jusqu’où devant le joueur ça pourrit
     public float MinAheadDecayChance = 0.1f; // très faible juste devant
     public float MaxAheadDecayChance = 0.3f; // jamais trop fort
+    #endregion
 
     [System.Serializable]
     public class CellPrefabEntry
@@ -84,25 +91,35 @@ public class Board : MonoBehaviour
 
 
     public Cell[,] cells;
-    
-
     public List<Cell> AllCells {  get; private set; } = new List<Cell>();
+    
     public static Board Instance;
 
     private void Awake()
     {
-        Instance = this;
-        
-        prefabLookup = new Dictionary<ECellType, GameObject>();
-        foreach (var entry in cellPrefabs)
+        if (Instance == null)
         {
-            prefabLookup[entry.type] = entry.prefab;
+            Instance = this;
+        }
+        else if (Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        prefabLookup = new Dictionary<ECellType, GameObject>();
+        if (cellPrefabs != null)
+        {
+            foreach (var entry in cellPrefabs)
+            {
+                if (entry != null && entry.prefab != null)
+                    prefabLookup[entry.type] = entry.prefab;
+            }
         }
 
         GenerateGrid();
 
         PlayerProgressY = referenceColumn;
-
         StartColumn = referenceColumn;
         DestroyedUntil = referenceColumn - 1;
         nextDialogueColumn = firstDialogueColumn;
@@ -123,18 +140,17 @@ public class Board : MonoBehaviour
         }
     }
 
-    public Dictionary<Cell, BFSNode> GetReachableCells(
-    int startX,
-    int startY,
-    int maxCost
-)
+    #region Pathfinding (BFS)
+    public Dictionary<Cell, BFSNode> GetReachableCells(int startX, int startY, int maxCost)
     {
-        Dictionary<Cell, BFSNode> visited = new();
-        Queue<BFSNode> queue = new();
+        Dictionary<Cell, BFSNode> visited = new Dictionary<Cell, BFSNode>();
+        Queue<BFSNode> queue = new Queue<BFSNode>();
 
         Cell start = GetCell(startX, startY);
-        BFSNode startNode = new BFSNode(start, 0, null);
+        if (start == null)
+            return visited;
 
+        BFSNode startNode = new BFSNode(start, 0, null);
         queue.Enqueue(startNode);
         visited[start] = startNode;
 
@@ -156,19 +172,15 @@ public class Board : MonoBehaviour
                 if (neighbor.WorldColumnIndex < StartColumn)
                     continue;
 
+                // Prevent moving forward from the starting column on first move
                 if (current.cell.WorldColumnIndex == StartColumn &&
-                neighbor.WorldColumnIndex > current.cell.WorldColumnIndex)
+                    neighbor.WorldColumnIndex > current.cell.WorldColumnIndex)
                     continue;
 
                 if (visited.ContainsKey(neighbor))
                     continue;
 
-                BFSNode next = new BFSNode(
-                    neighbor,
-                    current.cost + 1,
-                    current
-                );
-
+                BFSNode next = new BFSNode(neighbor, current.cost + 1, current);
                 visited[neighbor] = next;
                 queue.Enqueue(next);
             }
@@ -202,13 +214,14 @@ public class Board : MonoBehaviour
         path.Reverse();
         return path;
     }
+    #endregion
 
+    #region Golden path generation
     void GenerateGoldenPath()
     {
         goldenPath.Clear();
 
         int currentRow = rows / 2;
-
         for (int world = StartColumn; world <= LevelLength; world++)
         {
             goldenPath[world] = currentRow;
@@ -221,6 +234,7 @@ public class Board : MonoBehaviour
             }
         }
     }
+    
 
     void EnsureGoldenPath(int worldColumn, int physicalY)
     {
@@ -228,10 +242,12 @@ public class Board : MonoBehaviour
             return;
 
         int safeX = goldenPath[worldColumn];
-        cells[safeX, physicalY].ApplyCellType(ECellType.Normal);
+        if (IsValidCellIndex(safeX, physicalY))
+            cells[safeX, physicalY].ApplyCellType(ECellType.Normal);
     }
+    #endregion
 
-
+    #region Grid generation & helpers
     void GenerateGrid()
     {
         cells = new Cell[rows, columns];
@@ -250,30 +266,39 @@ public class Board : MonoBehaviour
             {
   
                 float angle = y * angleStep;
-
                 Vector3 pos = new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
-
                 Quaternion rot = Quaternion.LookRotation(pos.normalized);
 
                 GameObject cellObj = Instantiate(cellPrefab, pos, rot, transform);
-
                 float scaleFactor = radius / referenceRadius;
                 cellObj.transform.localScale = new Vector3(scaleFactor, 1f, 1f);
 
                 Cell cell = cellObj.GetComponent<Cell>();
+                if (cell == null)
+                {
+                    Debug.LogError("Cell prefab missing Cell component");
+                    Destroy(cellObj);
+                    continue;
+                }
 
                 cell.gridX = x;
                 cell.gridY = y;
-           
                 cell.gameObject.SetActive(false);
-
 
                 cells[x, y] = cell;
                 AllCells.Add(cell);
             }
         }
     }
+    bool IsValidCellIndex(int x, int y)
+    {
+        if (x < 0 || x >= rows) return false;
+        y = (y + columns) % columns;
+        return y >= 0 && y < columns;
+    }
+    #endregion
 
+    #region Column generation & placement
     public void GenerateColumn(int worldColumnIndex)
     {
         if (generationStopped)
@@ -320,17 +345,15 @@ public class Board : MonoBehaviour
         }
 
         /// DIALOGUE ///
-        bool dialoguePlaced = false;
         if (worldColumnIndex == nextDialogueColumn)
         {
             PlaceDialogueCell(physicalY);
             nextDialogueColumn += Random.Range(minDialogueGap, maxDialogueGap + 1);
-            dialoguePlaced = true;
             return;
         }
 
         /// EVENT ///
-        if (!dialoguePlaced && worldColumnIndex == nextEventColumn)
+        if (worldColumnIndex == nextEventColumn)
         {
             PlaceEventCell(physicalY);
             nextEventColumn += Random.Range(minEventGap, maxEventGap + 1);
@@ -347,11 +370,11 @@ public class Board : MonoBehaviour
             safeRow += Random.Range(-1, 2);
             safeRow = Mathf.Clamp(safeRow, 0, rows - 1);
         }
+
         if (Random.value < 0.4f)
             PlaceObstacleCluster(physicalY);
 
         bool hasValidPath = false;
-
         for (int x = 0; x < rows; x++)
         {
             Cell current = cells[x, physicalY];
@@ -365,21 +388,14 @@ public class Board : MonoBehaviour
         }
 
         if (!hasValidPath)
-        {
             cells[safeRow, physicalY].ApplyCellType(ECellType.Normal);
-        }
 
-        highestGeneratedWorldColumn = Mathf.Max(
-        highestGeneratedWorldColumn,
-        worldColumnIndex
-        );
+        highestGeneratedWorldColumn = Mathf.Max(highestGeneratedWorldColumn, worldColumnIndex);
 
         EnsureGoldenPath(worldColumnIndex, physicalY);
 
         if (goldenPath.TryGetValue(worldColumnIndex, out int pathX))
         {
-            Cell pathCell = cells[pathX, physicalY];
-
             if (!HasWalkableNeighbor(pathX, physicalY))
             {
                 int rescueRow = Mathf.Clamp(pathX + Random.Range(-1, 2), 0, rows - 1);
@@ -396,7 +412,6 @@ public class Board : MonoBehaviour
             {
                 if (dx == 0 && dy == 0)
                     continue;
-
                 Cell c = GetCell(x + dx, y + dy);
                 if (c != null && c.isWalkable)
                     return true;
@@ -404,7 +419,9 @@ public class Board : MonoBehaviour
         }
         return false;
     }
+    #endregion
 
+    #region Prefab helper & accessors
     public bool TryGetPrefab(ECellType type, out GameObject prefab)
     {
         return prefabLookup.TryGetValue(type, out prefab);
@@ -419,7 +436,9 @@ public class Board : MonoBehaviour
 
         return cells[x, y];
     }
+    #endregion
 
+    #region Progress & destruction
     public void SetPlayerProgress(int worldColumn)
     {
         if (worldColumn > PlayerProgressY)
@@ -464,7 +483,9 @@ public class Board : MonoBehaviour
 
         highestGeneratedWorldColumn = Mathf.Max(highestGeneratedWorldColumn, newWorldColumn + 1);
     }
+    #endregion
 
+    #region Placers & events
     void PlaceObstacleCluster(int y)
     {
         HashSet<int> blockedRows = new HashSet<int>();
@@ -523,6 +544,8 @@ public class Board : MonoBehaviour
     void PlaceEventCell(int y)
     {
         int x = Random.Range(0, rows);
-        cells[x, y].ApplyCellType(ECellType.Event);
+        Cell cell = cells[x, y];
+        cell.ApplyCellType(ECellType.Event);
     }
+    #endregion
 } 

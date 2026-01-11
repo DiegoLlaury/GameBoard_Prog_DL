@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using UnityEngine;
 using UnityEngine.UIElements;
 using static UnityEditor.Experimental.GraphView.GraphView;
@@ -24,6 +25,13 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
     public DialogueDatas dialogueData;
     public bool dialogueFinished = false;
     public int dialogueIndex = 0;
+
+    [SerializeField] private ResourceData rottenFlesh;
+    private bool eventTriggered = false;
+
+    private Color originalColor;
+    [SerializeField] private float colorVariationStrength = 0.12f;
+    private Color colorVariation;
 
     private void Start()
     {
@@ -52,6 +60,18 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
 
         // Récupère le renderer du prefab
         activeRenderer = currentVisual.GetComponentInChildren<Renderer>();
+
+        if (activeRenderer != null)
+        {
+            originalColor = activeRenderer.material.color;
+        }
+
+        colorVariation = new Color(
+         Random.Range(-colorVariationStrength, colorVariationStrength),
+         Random.Range(-colorVariationStrength, colorVariationStrength),
+         Random.Range(-colorVariationStrength, colorVariationStrength),
+         0f
+        );
     }
 
     public void SetWorldColumn(int worldIndex)
@@ -115,12 +135,10 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
 
             case ECellState.Decaying:
                 CurrentPawn.movementPoints -= 1;
-                CurrentPawn.MovementPointUsed();
                 break;
 
             case ECellState.Necrosed:
                 CurrentPawn.movementPoints -= 2;
-                CurrentPawn.MovementPointUsed();
                 break;
         }
     }
@@ -144,23 +162,51 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
 
     public void ShowNextDialogue()
     {
-        if (dialogueIndex >= dialogueData.dialogues.Length)
+
+        if (dialogueData == null || dialogueData.dialogues.Length == 0)
+            return;
+
+        // Si on a déjà montré les choix une fois, on boucle juste la dernière ligne
+        if (dialogueFinished && dialogueData.choices != null && dialogueData.choices.Length > 0)
         {
-            dialogueFinished = true;
-            dialogueIndex = dialogueData.dialogues.Length - 1;
-            UIManager.Instance.CloseDialogue();
+            UIManager.Instance.ShowDialogue(
+                dialogueData.dialogues[^1],
+                dialogueData.characterName,
+                dialogueData.characterImage,
+                new DialogueDatas.DialogueChoice[0],
+                this
+            );
             return;
         }
 
-        UIManager.Instance.ShowDialogue(
-            dialogueData.dialogues[dialogueIndex],
-            dialogueData.characterName,
-            dialogueData.characterImage,
-            dialogueData.choices,
-            this
-        );
+        bool isLastLine = dialogueIndex == dialogueData.dialogues.Length;
 
-        dialogueIndex++;
+        if (!isLastLine)
+        {
+            // Affiche la ligne suivante
+            UIManager.Instance.ShowDialogue(
+                dialogueData.dialogues[dialogueIndex],
+                dialogueData.characterName,
+                dialogueData.characterImage,
+                new DialogueDatas.DialogueChoice[0],
+                this
+            );
+
+            dialogueIndex++;
+        }
+        else
+        {
+            // Dernière ligne : fermer texte, afficher choix
+            UIManager.Instance.ShowDialogue(
+                "", // texte vide pour faire disparaître la dernière ligne
+                dialogueData.characterName,
+                dialogueData.characterImage,
+                dialogueData.choices, // on envoie les choix maintenant
+                this
+            );
+
+            dialogueFinished = true;  // On ne montrera plus que cette dernière ligne
+        }
     }
 
     public void OnTurnPassed()
@@ -216,7 +262,78 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
         durability = Mathf.Clamp(durability, 0, 6);
 
         UpdateState();
+    }
 
+    public void OnPlayerEndTurn(Pawn pawn)
+    {
+        TriggerCellEffects(pawn);
+    }
+
+    void TriggerCellEffects(Pawn pawn)
+    {
+        // EVENT (une seule fois)
+        if (contentType == ECellType.Event && !eventTriggered)
+        {
+            TriggerRandomEvent();
+            eventTriggered = true;
+        }
+
+        // RESSOURCE sur cases pourries
+        CollectRottenResource();
+    }
+
+    void CollectRottenResource()
+    {
+        if (rottenFlesh == null)
+            return;
+
+        int amount = 0;
+
+        if (state == ECellState.Decaying)
+            amount = Random.Range(1, 3);
+        else if (state == ECellState.Necrosed)
+            amount = Random.Range(2, 5);
+
+        if (amount > 0)
+        {
+            ResourceManager.Instance.AddResource(rottenFlesh, amount);
+            UIManager.Instance.UpdateFlesh(ResourceManager.Instance.GetResource(rottenFlesh));
+
+            Debug.Log($"+{amount} Rotten Flesh");
+        }
+    }
+
+    void TriggerRandomEvent()
+    {
+        if (rottenFlesh == null)
+            return;
+
+        int roll = Random.Range(0, 3);
+
+        switch (roll)
+        {
+            case 0:
+                GainFlesh(Random.Range(2, 5));
+                Debug.Log("Event : chair récupérée");
+                break;
+
+            case 1:
+                GainFlesh(Random.Range(1, 3));
+                Debug.Log("Event : récupération faible");
+                break;
+
+            case 2:
+                Debug.Log("Event : rien ne se passe...");
+                break;
+        }
+    }
+
+    void GainFlesh(int amount)
+    {
+        ResourceManager.Instance.AddResource(rottenFlesh, amount);
+        UIManager.Instance.UpdateFlesh(
+            ResourceManager.Instance.GetResource(rottenFlesh)
+        );
     }
 
     public void ApplyCellType(ECellType type)
@@ -247,6 +364,10 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
             case ECellType.Dialogue:
                 durability = 6;
                 isWalkable = true;
+                break;
+
+            case ECellType.Event:
+                isWalkable = true; 
                 break;
 
             case ECellType.End:
@@ -288,30 +409,39 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
     {
         if (activeRenderer == null)
             return;
+        if (contentType == ECellType.Event) 
+            return;
 
-        Color baseColor;
+        Color targetColor = Color.white;
+        float intensity = 0.35f;
 
         switch (state)
         {
             case ECellState.Healthy:
-                baseColor = new Color(0.85f, 0.75f, 0.6f); // beige
+                targetColor = new Color(0.85f, 0.75f, 0.6f);
+                intensity = 0.5f; // aucune teinte
                 break;
 
             case ECellState.Decaying:
-                baseColor = Color.green;
+                targetColor = new Color(0.2f, 1, 0.2f); // vert doux
+                intensity = 0.55f;
                 break;
 
             case ECellState.Necrosed:
-                baseColor = Color.black;
-                break;
-
-            default:
-                baseColor = Color.white;
+                targetColor = new Color(0.1f, 0.1f, 0.1f); // noir doux
+                intensity = 0.90f;
                 break;
         }
 
+        if (isInMoveRange)
+        {
+            targetColor = new Color(1f, 0.2f, 0.2f);
+            intensity = 0.4f;
+        }
+
+        Color baseWithVariation = originalColor + colorVariation;
         activeRenderer.material.color =
-        isInMoveRange ? Color.red : baseColor;
+            Color.Lerp(baseWithVariation, targetColor, intensity);
     }
 
     public void SetMoveRange(bool value)

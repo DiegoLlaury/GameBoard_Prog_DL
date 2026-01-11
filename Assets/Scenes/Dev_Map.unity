@@ -119,6 +119,53 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &9004855
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9004856}
+  - component: {fileID: 9004857}
+  m_Layer: 0
+  m_Name: ResourceManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9004856
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004855}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1280, y: 724.8, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9004857
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004855}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0500caf3e17b8224384dd32919b3a369, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  resources:
+  - data: {fileID: 11400000, guid: c919b615fe0bf904c83f323005e558ee, type: 2}
+    amount: 0
 --- !u!114 &93808678 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5871157238097141855, guid: 947f09154ff3dde40a456fb70c4b8a12, type: 3}
@@ -583,6 +630,8 @@ MonoBehaviour:
   choiceButtonPrefab: {fileID: 8927243483270305651, guid: 2b27ac97aa285fe48a478fbf908bf572, type: 3}
   choicesParent: {fileID: 975230719}
   nextButton: {fileID: 670246659}
+  fleshNumberText: {fileID: 145021444}
+  fleshResource: {fileID: 11400000, guid: c919b615fe0bf904c83f323005e558ee, type: 2}
 --- !u!1 &226595712
 GameObject:
   m_ObjectHideFlags: 0
@@ -992,8 +1041,8 @@ MonoBehaviour:
   referenceColumn: 0
   LevelLength: 100
   firstDialogueColumn: 8
-  minDialogueGap: 10
-  maxDialogueGap: 15
+  minDialogueGap: 25
+  maxDialogueGap: 30
   firstEventColumn: 5
   minEventGap: 4
   maxEventGap: 7
@@ -1495,6 +1544,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 975230719}
+  - component: {fileID: 975230721}
+  - component: {fileID: 975230722}
   m_Layer: 5
   m_Name: ChoiceZone
   m_TagString: Untagged
@@ -1518,9 +1569,49 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 54, y: -7}
-  m_SizeDelta: {x: 400, y: 100}
+  m_AnchoredPosition: {x: 52, y: -7}
+  m_SizeDelta: {x: 400, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &975230721
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 975230718}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3245ec927659c4140ac4f8d17403cc18, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_HorizontalFit: 0
+  m_VerticalFit: 0
+--- !u!114 &975230722
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 975230718}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Padding:
+    m_Left: 0
+    m_Right: 0
+    m_Top: 0
+    m_Bottom: 0
+  m_ChildAlignment: 0
+  m_Spacing: 50
+  m_ChildForceExpandWidth: 1
+  m_ChildForceExpandHeight: 1
+  m_ChildControlWidth: 0
+  m_ChildControlHeight: 0
+  m_ChildScaleWidth: 0
+  m_ChildScaleHeight: 0
+  m_ReverseArrangement: 0
 --- !u!1 &1115768751
 GameObject:
   m_ObjectHideFlags: 0
@@ -2766,3 +2857,4 @@ SceneRoots:
   - {fileID: 3792841837122668845}
   - {fileID: 1115768754}
   - {fileID: 1472468980}
+  - {fileID: 9004856}

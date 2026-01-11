@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6cc9938acc69f249819e6a1033e0546, type: 3}
+  m_Name: Character_1
+  m_EditorClassIdentifier: 
+  characterName: Nurclar
+  characterImage: {fileID: 21300000, guid: cc7cdecd01c1594459c5297f7096c2fc, type: 3}
+  dialogues:
+  - "Qu'avons nous l\xE0 ! tu t'est retrouver dans l'antre."
+  - Ce monde ce meurt, he he... Ton seul espoir si tu ne veut pas souffrir c'est
+    d'arriver jusqu'au bout.
+  - "Mais dans tout cas maintenent tu est bloquer, que tu veuille ou non ce monde
+    cycle \xE0 l'infinie d\xE9truisant et reconstruisant."
+  - Nous verrons combiens de temps tu tiendra.
+  choices:
+  - choiceText: Payer
+    consequenceText: Merci bien mon cher he he.
+    effectOnPlayer: 0
+  - choiceText: Partir
+    consequenceText: "Tant pis, \xE0 la revoyure ! "
+    effectOnPlayer: 0

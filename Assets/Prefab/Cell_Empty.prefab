@@ -29,7 +29,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 0.20535, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2667080419839683968}
@@ -77,6 +77,9 @@ MonoBehaviour:
   contentType: 0
   visualRoot: {fileID: 2667080419839683968}
   dialogueData: {fileID: 0}
+  dialogueFinished: 0
+  dialogueIndex: 0
+  rottenFlesh: {fileID: 11400000, guid: c919b615fe0bf904c83f323005e558ee, type: 2}
 --- !u!33 &5429956500652585854
 MeshFilter:
   m_ObjectHideFlags: 0

@@ -16,19 +16,69 @@ public class UIManager : MonoBehaviour
     [Header("Choices")]
     [SerializeField] private Button choiceButtonPrefab;  
     [SerializeField] private Transform choicesParent;
+    private bool waitingForClose = false;
 
     [Header("Navigation")]
     [SerializeField] private Button nextButton;
 
     [Header("Ressource")]
-    [SerializeField] private TextMeshProUGUI fleshNumberText; 
+    [SerializeField] private TextMeshProUGUI fleshNumberText;
+    [SerializeField] private ResourceData fleshResource;
 
     private Cell currentCell;
 
     private void Awake() { Instance = this; }
 
+    private void Start()
+    {
+        // Initialisation à l'ouverture du jeu
+        RefreshFlesh();
+
+        // Abonnement à l'event
+        ResourceManager.Instance.OnResourceChanged += OnResourceChanged;
+    }
+
+    private void OnDestroy()
+    {
+        if (ResourceManager.Instance != null)
+            ResourceManager.Instance.OnResourceChanged -= OnResourceChanged;
+    }
+
+    private void OnResourceChanged(ResourceData data, int newAmount)
+    {
+        if (data == fleshResource)
+            UpdateFlesh(newAmount);
+    }
+
+    private void RefreshFlesh()
+    {
+        if (ResourceManager.Instance == null)
+        {
+            Debug.LogError("ResourceManager.Instance est NULL");
+            return;
+        }
+
+        if (fleshResource == null)
+        {
+            Debug.LogError("FleshResource n'est pas assigné dans l'UIManager");
+            return;
+        }
+
+        int amount = ResourceManager.Instance.GetResource(fleshResource);
+        UpdateFlesh(amount);
+    }
+
+    public void UpdateFlesh(int currentFleshNumber)
+    {
+        fleshNumberText.text = currentFleshNumber.ToString();
+
+        Debug.Log(fleshNumberText);
+    }
+
     public void ShowDialogue(string text, string charName, Sprite charSprite, DialogueDatas.DialogueChoice[] choices, Cell cell)
     {
+        StopAllCoroutines();
+
         dialoguePanel.SetActive(true);
         characterNameText.text = charName;
         characterImage.sprite = charSprite;
@@ -36,37 +86,68 @@ public class UIManager : MonoBehaviour
 
         currentCell = cell;
 
-        StopAllCoroutines();
-        StartCoroutine(FadeText(text));
 
-        // Supprime anciens boutons
         foreach (Transform child in choicesParent)
             Destroy(child.gameObject);
 
-        // Crée les nouveaux boutons si choix disponibles
-        foreach (var choice in choices)
+        // Gestion texte
+        if (!string.IsNullOrEmpty(text))
         {
-            Button b = Instantiate(choiceButtonPrefab, choicesParent);
-            b.GetComponentInChildren<TextMeshProUGUI>().text = choice.choiceText;
-
-            b.onClick.RemoveAllListeners();
-            b.onClick.AddListener(() =>
-            {
-                dialogueText.text = choice.consequenceText;
-                // TODO : appliquer effet joueur
-                CloseDialogue();
-            });            
+            dialogueText.gameObject.SetActive(true);
+            StartCoroutine(FadeText(text));
+        }
+        else
+        {
+            dialogueText.gameObject.SetActive(false);
         }
 
+        // Gestion choix
+        bool hasChoices = choices != null && choices.Length > 0;
 
+        choicesParent.gameObject.SetActive(hasChoices);
+        nextButton.gameObject.SetActive(!hasChoices);
+
+        if (hasChoices)
+        {
+            foreach (var choice in choices)
+            {
+                Button b = Instantiate(choiceButtonPrefab, choicesParent);
+                b.GetComponentInChildren<TextMeshProUGUI>().text = choice.choiceText;
+
+                b.onClick.RemoveAllListeners();
+                b.onClick.AddListener(() =>
+                {
+                    // Cache les choix
+                    choicesParent.gameObject.SetActive(false);
+
+                    // Applique effet du choix
+                    dialogueText.gameObject.SetActive(true);
+                    dialogueText.text = choice.consequenceText;
+
+                    // Mise à jour ressources / effets
+                    // TODO: Ajouter ici les effets sur le joueur si besoin
+
+                    waitingForClose = true;
+
+                    // Ferme dialogue après un petit délai ou clic
+                    nextButton.gameObject.SetActive(true);
+                });
+            }
+        }
+
+        // Next bouton
         nextButton.onClick.RemoveAllListeners();
         nextButton.onClick.AddListener(() =>
         {
+            if (waitingForClose)
+            {
+                waitingForClose = false;
+                CloseDialogue();
+                return;
+            }
+
             currentCell.ShowNextDialogue();
         });
-
-        // Activer / désactiver bouton Next si pas de choix
-        nextButton.gameObject.SetActive(choices.Length == 0);
     }
 
     private IEnumerator FadeText(string fullText)
@@ -77,12 +158,7 @@ public class UIManager : MonoBehaviour
             dialogueText.text += c;
             yield return new WaitForSeconds(0.02f); // vitesse du fade/typing
         }
-    }
-
-    public void UpdateFlesh(int currentFleshNumber)
-    {
-        fleshNumberText.text = currentFleshNumber.ToString();
-    }
+    }    
 
     public void CloseDialogue()
     {

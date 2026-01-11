@@ -5,14 +5,13 @@ using UnityEngine.UIElements;
 using System.Collections;
 using System.Collections.Generic;
 
+
 public class Pawn : MonoBehaviour
 {
-
     [SerializeField] private Board board;
     [SerializeField] private PlayerDatas playerDatas;
     [SerializeField] private Dice dice;
     [SerializeField] private InputAction inputAction;
-
 
     public int currentX = 3;
     public int currentY;
@@ -209,10 +208,5 @@ public class Pawn : MonoBehaviour
     {
         Cell cell = board.GetCell(currentX, currentY);
         cell.Activate(this);
-    }
-
-    public void MovementPointUsed()
-    {
-        
     }
 }

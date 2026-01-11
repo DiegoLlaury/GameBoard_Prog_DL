@@ -53,6 +53,8 @@ public class TurnManager : MonoBehaviour
         board.TryAdvanceDestroyedFront();
 
         Cell current = board.GetCell(player.currentX, player.currentY);
+        if (current != null)
+            current.OnPlayerEndTurn(player);
 
         if (!current.isWalkable)
         {
