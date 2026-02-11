@@ -54,17 +54,18 @@ public class ResourceManager : MonoBehaviour
         if (entry != null)
         {
             entry.amount += amount;
+            OnResourceChanged?.Invoke(data, entry.amount);
         }
         else
         {
-            resources.Add(new ResourceEntry
+            var newEntry = new ResourceEntry
             {
                 data = data,
                 amount = amount
-            });
+            };
+            resources.Add(newEntry);
+            OnResourceChanged?.Invoke(data, newEntry.amount);
         }
-
-        OnResourceChanged?.Invoke(data, entry.amount);
     }
 
     public bool SpendResource(ResourceData data, int amount)
@@ -77,5 +78,20 @@ public class ResourceManager : MonoBehaviour
             return true;
         }
         return false;
+    }
+
+    /*public bool CanCraftDice(int fleshCost)
+    {
+        return GetResource(fleshResource) >= fleshCost;
+    }*/
+
+    public bool CraftDice(ResourceData fleshResource, int cost, Dice dicePrefab)
+    {
+        if (!SpendResource(fleshResource, cost))
+            return false;
+
+        Dice newDice = Instantiate(dicePrefab);
+        DiceInventoryUI.Instance.AddDice(newDice);
+        return true;
     }
 }

@@ -162,11 +162,9 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
 
     public void ShowNextDialogue()
     {
-
         if (dialogueData == null || dialogueData.dialogues.Length == 0)
             return;
 
-        // Si on a déjà montré les choix une fois, on boucle juste la dernière ligne
         if (dialogueFinished && dialogueData.choices != null && dialogueData.choices.Length > 0)
         {
             UIManager.Instance.ShowDialogue(
@@ -179,11 +177,10 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
             return;
         }
 
-        bool isLastLine = dialogueIndex == dialogueData.dialogues.Length;
+        bool isLastLine = dialogueIndex >= dialogueData.dialogues.Length - 1;
 
         if (!isLastLine)
         {
-            // Affiche la ligne suivante
             UIManager.Instance.ShowDialogue(
                 dialogueData.dialogues[dialogueIndex],
                 dialogueData.characterName,
@@ -196,22 +193,29 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
         }
         else
         {
-            // Dernière ligne : fermer texte, afficher choix
             UIManager.Instance.ShowDialogue(
-                "", // texte vide pour faire disparaître la dernière ligne
+                "",
                 dialogueData.characterName,
                 dialogueData.characterImage,
-                dialogueData.choices, // on envoie les choix maintenant
+                dialogueData.choices,
                 this
             );
 
-            dialogueFinished = true;  // On ne montrera plus que cette dernière ligne
+            dialogueFinished = true;
         }
     }
 
     public void OnTurnPassed()
     {
         Board board = Board.Instance;
+
+        if (board.goldenPath.TryGetValue(WorldColumnIndex, out int goldenRow))
+        {
+            if (gridX == goldenRow && state != ECellState.Destroyed)
+            {
+                return;
+            }
+        }
 
         int cellProgress = WorldColumnIndex;
         int playerProgress = board.PlayerProgressY;
@@ -223,12 +227,11 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
             int distanceBehind = playerProgress - cellProgress;
 
             float t = Mathf.Clamp01((float)distanceBehind / board.MaxDecayDistance);
-            float decayChance = Mathf.Lerp(board.MinDecayChance,board.MaxDecayChance,t);
+            float decayChance = Mathf.Lerp(board.MinDecayChance, board.MaxDecayChance, t);
 
             if (Random.value < decayChance)
                 decay = 1;
         }
-
         else if (cellProgress > playerProgress && cellProgress <= playerProgress + board.MaxAheadDistance)
         {
             int distanceAhead = cellProgress - playerProgress;
@@ -236,33 +239,27 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
 
             float aheadChance = Mathf.Lerp(board.MaxAheadDecayChance, board.MinAheadDecayChance, t);
 
-            aheadChance += GetNeighborInfection() * 0.05f;
-
             if (Random.value < aheadChance)
                 decay = 1;
         }
 
-        // --- Infection par voisin ---
-        if (decay > 0)
-        {
-            decay += GetNeighborInfection();
-        }
+        decay += GetNeighborInfection();
 
-        // --- États internes (amplificateurs doux) ---
         if (state == ECellState.Decaying && Random.value < board.DecayingBoostChance)
-        decay++;
+            decay++;
 
         if (state == ECellState.Necrosed && Random.value < board.NecrosedBoostChance)
-        decay++;
+            decay++;
 
         if (decay <= 0)
-            return; //  cette case survit ce tour
+            return;
 
         durability -= decay;
         durability = Mathf.Clamp(durability, 0, 6);
 
         UpdateState();
     }
+
 
     public void OnPlayerEndTurn(Pawn pawn)
     {

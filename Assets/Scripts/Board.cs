@@ -42,7 +42,7 @@ public class Board : MonoBehaviour
     [SerializeField] private int maxEventGap = 7;
     private int nextEventColumn = -1;
     private bool generationStopped = false;
-    private Dictionary<int, int> goldenPath = new Dictionary<int, int>();
+    public Dictionary<int, int> goldenPath = new Dictionary<int, int>();
     #endregion
 
     private int safeRow = -1;
@@ -133,7 +133,8 @@ public class Board : MonoBehaviour
         GenerateGoldenPath();
 
         // génération initiale
-        for (int i = 0; i < columns; i++)
+        int initialGeneration = columns;
+        for (int i = 0; i < initialGeneration; i++)
         {
             GenerateColumn(highestGeneratedWorldColumn);
             highestGeneratedWorldColumn++;
@@ -172,7 +173,6 @@ public class Board : MonoBehaviour
                 if (neighbor.WorldColumnIndex < StartColumn)
                     continue;
 
-                // Prevent moving forward from the starting column on first move
                 if (current.cell.WorldColumnIndex == StartColumn &&
                     neighbor.WorldColumnIndex > current.cell.WorldColumnIndex)
                     continue;
@@ -180,7 +180,17 @@ public class Board : MonoBehaviour
                 if (visited.ContainsKey(neighbor))
                     continue;
 
-                BFSNode next = new BFSNode(neighbor, current.cost + 1, current);
+                int moveCost = 1;
+                if (neighbor.state == ECellState.Decaying)
+                    moveCost = 2;
+                else if (neighbor.state == ECellState.Necrosed)
+                    moveCost = 3;
+
+                int newCost = current.cost + moveCost;
+                if (newCost > maxCost)
+                    continue;
+
+                BFSNode next = new BFSNode(neighbor, newCost, current);
                 visited[neighbor] = next;
                 queue.Enqueue(next);
             }
@@ -188,6 +198,7 @@ public class Board : MonoBehaviour
 
         return visited;
     }
+
 
     IEnumerable<Cell> GetNeighbors(Cell cell)
     {
@@ -304,7 +315,9 @@ public class Board : MonoBehaviour
         if (generationStopped)
             return;
 
-        if (worldColumnIndex > highestGeneratedWorldColumn + 3)
+        // Only enforce "max ahead" distance after initial generation
+        bool isInitialGeneration = (highestGeneratedWorldColumn < columns);
+        if (!isInitialGeneration && worldColumnIndex > highestGeneratedWorldColumn + 3)
             return;
 
         if (worldColumnIndex <= DestroyedUntil)
@@ -335,7 +348,6 @@ public class Board : MonoBehaviour
             return;
         }
 
-        // ===== FIN DE NIVEAU =====
         if (!endPlaced && worldColumnIndex == LevelLength)
         {
             PlaceEndCell(physicalY);
@@ -344,27 +356,27 @@ public class Board : MonoBehaviour
             return;
         }
 
-        /// DIALOGUE ///
         if (worldColumnIndex == nextDialogueColumn)
         {
             PlaceDialogueCell(physicalY);
             nextDialogueColumn += Random.Range(minDialogueGap, maxDialogueGap + 1);
+            EnsureGoldenPath(worldColumnIndex, physicalY);
+            highestGeneratedWorldColumn = Mathf.Max(highestGeneratedWorldColumn, worldColumnIndex);
             return;
         }
 
-        /// EVENT ///
         if (worldColumnIndex == nextEventColumn)
         {
             PlaceEventCell(physicalY);
             nextEventColumn += Random.Range(minEventGap, maxEventGap + 1);
+            EnsureGoldenPath(worldColumnIndex, physicalY);
+            highestGeneratedWorldColumn = Mathf.Max(highestGeneratedWorldColumn, worldColumnIndex);
             return;
         }
-        
-        /// OBSTACLE ///
+
         if (safeRow == -1)
             safeRow = Random.Range(0, rows);
 
-        // variation douce
         if (Random.Range(0, 100) < safeRowChangeChance)
         {
             safeRow += Random.Range(-1, 2);
@@ -403,6 +415,8 @@ public class Board : MonoBehaviour
             }
         }
     }
+
+
 
     bool HasWalkableNeighbor(int x, int y)
     {
@@ -447,17 +461,23 @@ public class Board : MonoBehaviour
 
     public void TryAdvanceDestroyedFront()
     {
-
-        int next = DestroyedUntil + 1;
-        int y = next % columns;
-
-        for (int x = 0; x < rows; x++)
+        while (DestroyedUntil < PlayerProgressY - MaxDecayDistance)
         {
-            if (cells[x, y].durability > 0)
-                return;
-        }
+            int next = DestroyedUntil + 1;
+            int y = next % columns;
 
-        AdvanceDestroyedFront();
+            bool allDestroyed = true;
+            for (int x = 0; x < rows; x++)
+            {
+                if (cells[x, y].durability > 0)
+                {
+                    cells[x, y].durability = 0;
+                    cells[x, y].UpdateState();
+                }
+            }
+
+            AdvanceDestroyedFront();
+        }
     }
 
     public void AdvanceDestroyedFront()
@@ -495,18 +515,18 @@ public class Board : MonoBehaviour
             if (x == safeRow)
                 continue;
 
+            if (goldenPath.TryGetValue(cells[x, y].WorldColumnIndex, out int safeX))
+            {
+                if (x == safeX)
+                    continue;
+            }
+
             if (Random.value < 0.7f)
                 blockedRows.Add(x);
         }
 
         foreach (int x in blockedRows)
         {
-            if (goldenPath.TryGetValue(cells[x, y].WorldColumnIndex, out int safeX))
-            {
-                if (x == safeX)
-                    continue; 
-            }
-
             Cell cell = cells[x, y];
 
             if (cell.WorldColumnIndex <= PlayerProgressY)
@@ -515,6 +535,7 @@ public class Board : MonoBehaviour
             cell.ApplyCellType(ECellType.Obstacle);
         }
     }
+
 
     void PlaceDialogueCell(int y)
     {

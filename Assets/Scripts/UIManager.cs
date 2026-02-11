@@ -117,21 +117,23 @@ public class UIManager : MonoBehaviour
                 b.onClick.RemoveAllListeners();
                 b.onClick.AddListener(() =>
                 {
-                    // Cache les choix
                     choicesParent.gameObject.SetActive(false);
-
-                    // Applique effet du choix
                     dialogueText.gameObject.SetActive(true);
                     dialogueText.text = choice.consequenceText;
 
-                    // Mise à jour ressources / effets
-                    // TODO: Ajouter ici les effets sur le joueur si besoin
+                    if (choice.effectOnPlayer != 0)
+                    {
+                        Pawn pawn = FindFirstObjectByType<Pawn>();
+                        if (pawn != null)
+                        {
+                            pawn.movementPoints += choice.effectOnPlayer;
+                        }
+                    }
 
                     waitingForClose = true;
-
-                    // Ferme dialogue après un petit délai ou clic
                     nextButton.gameObject.SetActive(true);
                 });
+
             }
         }
 

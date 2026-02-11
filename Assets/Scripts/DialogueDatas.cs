@@ -15,6 +15,10 @@ public class DialogueDatas : ScriptableObject
         public string choiceText;
         public string consequenceText; // ce qui se passe si choisi
         public int effectOnPlayer; // optionnel : +1 mouvement, etc
+
+        [Header("Resource Cost")]
+        public ResourceData costResource;
+        public int costAmount;
     }
 
     public DialogueChoice[] choices; // si vide -> pas de choix

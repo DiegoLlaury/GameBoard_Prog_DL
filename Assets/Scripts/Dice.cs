@@ -43,20 +43,23 @@ public class Dice : MonoBehaviour, IDurable
         switch (state)
         {
             case EnumDiceState.Healthy:
-                return Random.Range(4, 7); // 4–6
+                return Random.Range(4, 7);
 
             case EnumDiceState.Decaying:
-                return Random.Range(2, 5); // 2–4
+                return Random.Range(2, 5);
 
             case EnumDiceState.Rotten:
-                return Random.Range(1, 3); // 1–2
+                return Random.Range(1, 3);
 
             case EnumDiceState.Reduced:
-                return Random.Range(1, 2); // dé brisé mais encore utilisable
-        }
+                return 1;
 
-        return 1;
+            default:
+                Debug.LogWarning($"Unknown dice state: {state}");
+                return 1;
+        }
     }
+
 
     public void OnTurnPassed()
     {

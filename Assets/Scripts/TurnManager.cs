@@ -56,12 +56,20 @@ public class TurnManager : MonoBehaviour
         if (current != null)
             current.OnPlayerEndTurn(player);
 
-        if (!current.isWalkable)
+        if (current == null || !current.isWalkable || current.state == ECellState.Destroyed)
         {
             Die();
+            return;
+        }
 
+        if (player.currentWorldColumn <= board.DestroyedUntil)
+        {
+            Debug.Log("Caught by decay!");
+            Die();
+            return;
         }
     }
+
 
     public void Die()
     {
