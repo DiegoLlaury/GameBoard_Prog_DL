@@ -7,7 +7,7 @@ public class DialogueDatas : ScriptableObject
     public Sprite characterImage;
 
     [TextArea(2, 10)]
-    public string[] dialogues; // dialogues linéaires
+    public string[] dialogues; // dialogues linï¿½aires
 
     [System.Serializable]
     public class DialogueChoice
@@ -19,6 +19,14 @@ public class DialogueDatas : ScriptableObject
         [Header("Resource Cost")]
         public ResourceData costResource;
         public int costAmount;
+
+        [Header("Resource Reward")]
+        public ResourceData rewardResource;
+        public int rewardAmount;
+
+        [Header("Dice Reward")]
+        public Dice rewardDicePrefab;
+        public int rewardDiceCount = 1;
     }
 
     public DialogueChoice[] choices; // si vide -> pas de choix

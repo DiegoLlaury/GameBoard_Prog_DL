@@ -66,16 +66,16 @@ public class Board : MonoBehaviour
     [Header("Decay Balancing")]
 
     public int MaxDecayDistance = 15;     // largeur de la vague
-    public float MinDecayChance = 0.4f;  // chance minimale (près du joueur)
-    public float MaxDecayChance = 0.9f;   // chance max (loin derrière)
+    public float MinDecayChance = 0.4f;  // chance minimale (prï¿½s du joueur)
+    public float MaxDecayChance = 0.9f;   // chance max (loin derriï¿½re)
 
     public float DecayingBoostChance = 0.75f;
     public float NecrosedBoostChance = 0.95f;
 
     public float NeighborDecayChance = 0.6f;
 
-    public int MaxAheadDistance = 6;          // jusqu’où devant le joueur ça pourrit
-    public float MinAheadDecayChance = 0.1f; // très faible juste devant
+    public int MaxAheadDistance = 6;          // jusquï¿½oï¿½ devant le joueur ï¿½a pourrit
+    public float MinAheadDecayChance = 0.1f; // trï¿½s faible juste devant
     public float MaxAheadDecayChance = 0.3f; // jamais trop fort
     #endregion
 
@@ -89,6 +89,14 @@ public class Board : MonoBehaviour
     public List<CellPrefabEntry> cellPrefabs;
     private Dictionary<ECellType, GameObject> prefabLookup;
 
+
+    /// <summary>
+    /// The grid row (x) where the player spawned. Obstacles are never placed on this row
+    /// for the starting columns so the player is never blocked at start.
+    /// </summary>
+    public int SpawnRow { get; private set; } = -1;
+
+    public void SetSpawnRow(int row) => SpawnRow = row;
 
     public Cell[,] cells;
     public List<Cell> AllCells {  get; private set; } = new List<Cell>();
@@ -132,7 +140,7 @@ public class Board : MonoBehaviour
         highestGeneratedWorldColumn = referenceColumn;
         GenerateGoldenPath();
 
-        // génération initiale
+        // gï¿½nï¿½ration initiale
         int initialGeneration = columns;
         for (int i = 0; i < initialGeneration; i++)
         {
@@ -245,16 +253,22 @@ public class Board : MonoBehaviour
             }
         }
     }
-    
 
+    /// <summary>
+    /// Called after a column is generated. Ensures a cardinal-connected walkable passage
+    /// exists on the golden path cell for this column, restoring it only if it was
+    /// destroyed or made into an obstacle.
+    /// </summary>
     void EnsureGoldenPath(int worldColumn, int physicalY)
     {
-        if (!goldenPath.ContainsKey(worldColumn))
+        if (!goldenPath.TryGetValue(worldColumn, out int safeX))
             return;
 
-        int safeX = goldenPath[worldColumn];
-        if (IsValidCellIndex(safeX, physicalY))
-            cells[safeX, physicalY].ApplyCellType(ECellType.Normal);
+        Cell cell = cells[safeX, physicalY];
+
+        // Restore the cell only if it is not walkable (obstacle or destroyed)
+        if (!cell.isWalkable || cell.state == ECellState.Destroyed)
+            cell.ApplyCellType(ECellType.Normal);
     }
     #endregion
 
@@ -339,10 +353,28 @@ public class Board : MonoBehaviour
 
         if (worldColumnIndex < StartColumn + 2)
         {
+            // These columns act as an invisible wall behind the player.
+            // Destroying them hides the visual and makes them non-walkable,
+            // clearly communicating the one-way direction to the player.
             for (int x = 0; x < rows; x++)
             {
                 Cell cell = cells[x, physicalY];
-                cell.durability = 1;
+                cell.ApplyCellType(ECellType.Normal);
+                cell.durability = 0;
+                cell.UpdateState();
+            }
+            return;
+        }
+
+        // The player always spawns at StartColumn + 2 (currentY = referenceColumn % columns + 2).
+        // This column must never receive obstacles: the board generates in Awake, before the Pawn exists.
+        if (worldColumnIndex == StartColumn + 2)
+        {
+            for (int x = 0; x < rows; x++)
+            {
+                Cell cell = cells[x, physicalY];
+                cell.ApplyCellType(ECellType.Normal);
+                cell.durability = 6;
                 cell.UpdateState();
             }
             return;
@@ -386,51 +418,42 @@ public class Board : MonoBehaviour
         if (Random.value < 0.4f)
             PlaceObstacleCluster(physicalY);
 
-        bool hasValidPath = false;
-        for (int x = 0; x < rows; x++)
-        {
-            Cell current = cells[x, physicalY];
-            Cell prev = cells[x, (physicalY - 1 + columns) % columns];
-
-            if (current.isWalkable && prev.isWalkable)
-            {
-                hasValidPath = true;
-                break;
-            }
-        }
-
-        if (!hasValidPath)
-            cells[safeRow, physicalY].ApplyCellType(ECellType.Normal);
-
-        highestGeneratedWorldColumn = Mathf.Max(highestGeneratedWorldColumn, worldColumnIndex);
-
+        // After obstacles, guarantee the golden path cell is walkable in this column.
         EnsureGoldenPath(worldColumnIndex, physicalY);
 
-        if (goldenPath.TryGetValue(worldColumnIndex, out int pathX))
+        // Also guarantee that the golden path cell in the PREVIOUS world column
+        // has at least one cardinal walkable neighbor so movement is never blocked.
+        int prevWorldColumn = worldColumnIndex - 1;
+        if (goldenPath.TryGetValue(prevWorldColumn, out int prevPathX))
         {
-            if (!HasWalkableNeighbor(pathX, physicalY))
+            int prevPhysicalY = prevWorldColumn % columns;
+            if (!HasCardinalWalkableNeighbor(prevPathX, prevPhysicalY))
             {
-                int rescueRow = Mathf.Clamp(pathX + Random.Range(-1, 2), 0, rows - 1);
-                cells[rescueRow, physicalY].ApplyCellType(ECellType.Normal);
+                // Open the golden path cell of the current column as a bridge
+                if (goldenPath.TryGetValue(worldColumnIndex, out int curPathX))
+                    cells[curPathX, physicalY].ApplyCellType(ECellType.Normal);
             }
         }
+
+        highestGeneratedWorldColumn = Mathf.Max(highestGeneratedWorldColumn, worldColumnIndex);
     }
 
-
-
-    bool HasWalkableNeighbor(int x, int y)
+    /// <summary>
+    /// Returns true if the cell at (x, y) has at least one cardinal (non-diagonal)
+    /// walkable, non-destroyed neighbor â€” matching the BFS movement rules.
+    /// </summary>
+    bool HasCardinalWalkableNeighbor(int x, int y)
     {
-        for (int dx = -1; dx <= 1; dx++)
+        int[] dx = { 1, -1, 0, 0 };
+        int[] dy = { 0, 0, 1, -1 };
+
+        for (int i = 0; i < 4; i++)
         {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                if (dx == 0 && dy == 0)
-                    continue;
-                Cell c = GetCell(x + dx, y + dy);
-                if (c != null && c.isWalkable)
-                    return true;
-            }
+            Cell c = GetCell(x + dx[i], y + dy[i]);
+            if (c != null && c.isWalkable && c.state != ECellState.Destroyed)
+                return true;
         }
+
         return false;
     }
     #endregion
@@ -461,23 +484,16 @@ public class Board : MonoBehaviour
 
     public void TryAdvanceDestroyedFront()
     {
-        while (DestroyedUntil < PlayerProgressY - MaxDecayDistance)
+        int next = DestroyedUntil + 1;
+        int y = next % columns;
+
+        for (int x = 0; x < rows; x++)
         {
-            int next = DestroyedUntil + 1;
-            int y = next % columns;
-
-            bool allDestroyed = true;
-            for (int x = 0; x < rows; x++)
-            {
-                if (cells[x, y].durability > 0)
-                {
-                    cells[x, y].durability = 0;
-                    cells[x, y].UpdateState();
-                }
-            }
-
-            AdvanceDestroyedFront();
+            if (cells[x, y].durability > 0)
+                return; // Stop if any cell is still alive
         }
+
+        AdvanceDestroyedFront();
     }
 
     public void AdvanceDestroyedFront()
@@ -515,6 +531,10 @@ public class Board : MonoBehaviour
             if (x == safeRow)
                 continue;
 
+            // Never place an obstacle on the player's spawn row.
+            if (x == SpawnRow)
+                continue;
+
             if (goldenPath.TryGetValue(cells[x, y].WorldColumnIndex, out int safeX))
             {
                 if (x == safeX)
@@ -547,7 +567,7 @@ public class Board : MonoBehaviour
         if (dialoguePool.Length > 0)
             cell.dialogueData = dialoguePool[Random.Range(0, dialoguePool.Length)];
 
-        // sécurité : le reste de la colonne reste praticable
+        // sï¿½curitï¿½ : le reste de la colonne reste praticable
         for (int i = 0; i < rows; i++)
         {
             if (i == x) continue;

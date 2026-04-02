@@ -1,13 +1,11 @@
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using UnityEngine;
-using UnityEngine.UIElements;
-using static UnityEditor.Experimental.GraphView.GraphView;
 
 public class Cell : MonoBehaviour, ICellActivable, IDurable
 {
     public int durability = 5;
     public ECellState state;
+    private ECellState lastRenderedState = ECellState.Healthy;
 
     public int gridX;
     public int gridY;
@@ -33,9 +31,13 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
     [SerializeField] private float colorVariationStrength = 0.12f;
     private Color colorVariation;
 
+    // --- Move-range highlight ---
+    private static readonly Color MoveRangeColor = new Color(1f, 0.1f, 0.1f, 1f);
+    private static readonly float MoveRangeBlendIntensity = 0.55f;
+
     private void Start()
     {
-        TurnManager.Instance.RegisterDurable(this);
+
         UpdateState();
     }
     private void Awake()
@@ -53,12 +55,12 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
 
         currentVisual = Instantiate(prefab, visualRoot);
 
-        // Reset LOCAL transform (très important)
+        // Reset LOCAL transform (trï¿½s important)
         currentVisual.transform.localPosition = Vector3.zero;
         currentVisual.transform.localRotation = Quaternion.identity;
         currentVisual.transform.localScale = Vector3.one;
 
-        // Récupère le renderer du prefab
+        // Rï¿½cupï¿½re le renderer du prefab
         activeRenderer = currentVisual.GetComponentInChildren<Renderer>();
 
         if (activeRenderer != null)
@@ -84,12 +86,12 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
         List<Cell> neighbors = new List<Cell>();
         Board board = Board.Instance;
 
-        // Radial intérieur
+        // Radial intï¿½rieur
         Cell c;
         c = board.GetCell(gridX - 1, gridY);
         if (c != null) neighbors.Add(c);
 
-        // Radial extérieur
+        // Radial extï¿½rieur
         c = board.GetCell(gridX + 1, gridY);
         if (c != null) neighbors.Add(c);
 
@@ -134,11 +136,9 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
                 break;
 
             case ECellState.Decaying:
-                CurrentPawn.movementPoints -= 1;
                 break;
 
             case ECellState.Necrosed:
-                CurrentPawn.movementPoints -= 2;
                 break;
         }
     }
@@ -193,8 +193,9 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
         }
         else
         {
+            // Affiche la derniÃ¨re ligne de dialogue avant les choix
             UIManager.Instance.ShowDialogue(
-                "",
+                dialogueData.dialogues[dialogueIndex],
                 dialogueData.characterName,
                 dialogueData.characterImage,
                 dialogueData.choices,
@@ -207,15 +208,11 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
 
     public void OnTurnPassed()
     {
+        Debug.Log($"Cell [{gridX},{gridY}] OnTurnPassed called. Durability: {durability}, State: {state}");
+
         Board board = Board.Instance;
 
-        if (board.goldenPath.TryGetValue(WorldColumnIndex, out int goldenRow))
-        {
-            if (gridX == goldenRow && state != ECellState.Destroyed)
-            {
-                return;
-            }
-        }
+        // Golden path cells are NOT immune â€” they decay normally.
 
         int cellProgress = WorldColumnIndex;
         int playerProgress = board.PlayerProgressY;
@@ -252,11 +249,15 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
             decay++;
 
         if (decay <= 0)
+        {
+            Debug.Log($"  No decay this turn");
             return;
+        }
 
         durability -= decay;
         durability = Mathf.Clamp(durability, 0, 6);
 
+        Debug.Log($"  Decayed by {decay}. New durability: {durability}");
         UpdateState();
     }
 
@@ -311,12 +312,12 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
         {
             case 0:
                 GainFlesh(Random.Range(2, 5));
-                Debug.Log("Event : chair récupérée");
+                Debug.Log("Event : chair rï¿½cupï¿½rï¿½e");
                 break;
 
             case 1:
                 GainFlesh(Random.Range(1, 3));
-                Debug.Log("Event : récupération faible");
+                Debug.Log("Event : rï¿½cupï¿½ration faible");
                 break;
 
             case 2:
@@ -341,6 +342,10 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
         if (visualRoot != null && !visualRoot.gameObject.activeSelf)
             visualRoot.gameObject.SetActive(true);
 
+        // Register with TurnManager when cell becomes active
+        if (TurnManager.Instance != null)
+            TurnManager.Instance.RegisterDurable(this);
+
         contentType = type;
 
         Board board = Board.Instance;
@@ -350,7 +355,7 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
         switch (type)
         {
             case ECellType.Normal:
-                durability = Random.Range(5, 6);
+                durability = Random.Range(5, 7);
                 isWalkable = true;
                 break;
 
@@ -364,7 +369,7 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
                 break;
 
             case ECellType.Event:
-                isWalkable = true; 
+                isWalkable = true;
                 break;
 
             case ECellType.End:
@@ -373,7 +378,7 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
                 break;
         }
 
-        UpdateState();    
+        UpdateState();
     }
 
     public void UpdateState()
@@ -386,6 +391,10 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
             if (visualRoot != null)
                 visualRoot.gameObject.SetActive(false);
 
+            // Unregister from TurnManager to stop processing
+            if (TurnManager.Instance != null)
+                TurnManager.Instance.UnregisterDurable(this);
+
             return;
         }
 
@@ -395,6 +404,11 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
             state = ECellState.Decaying;
         else
             state = ECellState.Necrosed;
+
+        // Walkability is always driven by content type, never by decay state.
+        // This prevents obstacles from appearing as Decaying/Necrosed while still
+        // being impassable due to a stale isWalkable = false.
+        isWalkable = (contentType != ECellType.Obstacle);
 
         if (activeRenderer != null)
             activeRenderer.enabled = true;
@@ -406,44 +420,70 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
     {
         if (activeRenderer == null)
             return;
-        if (contentType == ECellType.Event) 
+
+        if (state == lastRenderedState)
             return;
 
-        Color targetColor = Color.white;
-        float intensity = 0.35f;
+        lastRenderedState = state;
+        RefreshColor();
+    }
+
+    /// <summary>
+    /// Enables or disables the transparent red move-range highlight on this cell.
+    /// </summary>
+    public void SetMoveRange(bool value)
+    {
+        isInMoveRange = value && isWalkable;
+        RefreshColor();
+    }
+
+    // Re-applies the correct color based on current state + move-range flag.
+    private void RefreshColor()
+    {
+        if (activeRenderer == null)
+            return;
+
+        // Move-range highlight applies to ALL cell types, including Event.
+        if (isInMoveRange)
+        {
+            activeRenderer.material.color = Color.Lerp(
+                originalColor + colorVariation,
+                MoveRangeColor,
+                MoveRangeBlendIntensity
+            );
+            return;
+        }
+
+        // State-based coloring is skipped for Event cells (they have their own look).
+        if (contentType == ECellType.Event)
+            return;
+
+        // Restore state color
+        Color targetColor = originalColor;
+        float intensity = 0f;
 
         switch (state)
         {
             case ECellState.Healthy:
                 targetColor = new Color(0.85f, 0.75f, 0.6f);
-                intensity = 0.5f; // aucune teinte
+                intensity = 0.5f;
                 break;
 
             case ECellState.Decaying:
-                targetColor = new Color(0.2f, 1, 0.2f); // vert doux
+                targetColor = new Color(0.2f, 1f, 0.2f);
                 intensity = 0.55f;
                 break;
 
             case ECellState.Necrosed:
-                targetColor = new Color(0.1f, 0.1f, 0.1f); // noir doux
+                targetColor = new Color(0.1f, 0.1f, 0.1f);
                 intensity = 0.90f;
                 break;
         }
 
-        if (isInMoveRange)
-        {
-            targetColor = new Color(1f, 0.2f, 0.2f);
-            intensity = 0.4f;
-        }
-
-        Color baseWithVariation = originalColor + colorVariation;
-        activeRenderer.material.color =
-            Color.Lerp(baseWithVariation, targetColor, intensity);
-    }
-
-    public void SetMoveRange(bool value)
-    {
-        isInMoveRange = value && isWalkable; 
-        UpdateVisual();
+        activeRenderer.material.color = Color.Lerp(
+            originalColor + colorVariation,
+            targetColor,
+            intensity
+        );
     }
 }

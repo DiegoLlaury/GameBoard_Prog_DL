@@ -80,6 +80,8 @@ MonoBehaviour:
   dialogueFinished: 0
   dialogueIndex: 0
   rottenFlesh: {fileID: 11400000, guid: c919b615fe0bf904c83f323005e558ee, type: 2}
+  colorVariationStrength: 0.12
+  moveRangeOverlayMaterial: {fileID: 2100000, guid: fb1bcf568ae5bfb4787173f113003e1c, type: 2}
 --- !u!33 &5429956500652585854
 MeshFilter:
   m_ObjectHideFlags: 0

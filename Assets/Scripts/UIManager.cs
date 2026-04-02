@@ -26,15 +26,20 @@ public class UIManager : MonoBehaviour
     [SerializeField] private ResourceData fleshResource;
 
     private Cell currentCell;
+    private Pawn pawnRef;
 
-    private void Awake() { Instance = this; }
+    private void Awake()
+    {
+        Instance = this;
+        pawnRef = FindFirstObjectByType<Pawn>();
+    }
 
     private void Start()
     {
-        // Initialisation à l'ouverture du jeu
+        // Initialisation ï¿½ l'ouverture du jeu
         RefreshFlesh();
 
-        // Abonnement à l'event
+        // Abonnement ï¿½ l'event
         ResourceManager.Instance.OnResourceChanged += OnResourceChanged;
     }
 
@@ -60,7 +65,7 @@ public class UIManager : MonoBehaviour
 
         if (fleshResource == null)
         {
-            Debug.LogError("FleshResource n'est pas assigné dans l'UIManager");
+            Debug.LogError("FleshResource n'est pas assignï¿½ dans l'UIManager");
             return;
         }
 
@@ -85,6 +90,9 @@ public class UIManager : MonoBehaviour
         dialogueText.text = text;
 
         currentCell = cell;
+
+        if (pawnRef != null)
+            pawnRef.IsDialogueLocked = true;
 
 
         foreach (Transform child in choicesParent)
@@ -130,6 +138,8 @@ public class UIManager : MonoBehaviour
                         }
                     }
 
+                    ApplyChoiceRewards(choice);
+
                     waitingForClose = true;
                     nextButton.gameObject.SetActive(true);
                 });
@@ -152,6 +162,35 @@ public class UIManager : MonoBehaviour
         });
     }
 
+    /// <summary>
+    /// Grants the resource and/or dice rewards defined on the chosen dialogue option.
+    /// </summary>
+    private void ApplyChoiceRewards(DialogueDatas.DialogueChoice choice)
+    {
+        if (choice.rewardResource != null && choice.rewardAmount > 0)
+        {
+            ResourceManager.Instance.AddResource(choice.rewardResource, choice.rewardAmount);
+            Debug.Log($"[Dialogue] Reward: +{choice.rewardAmount} {choice.rewardResource.displayName}");
+        }
+
+        if (choice.rewardDicePrefab != null && choice.rewardDiceCount > 0)
+        {
+            for (int i = 0; i < choice.rewardDiceCount; i++)
+            {
+                if (!DiceInventoryUI.Instance.CanAddDice())
+                {
+                    Debug.LogWarning("[Dialogue] Dice inventory is full, reward dice skipped.");
+                    break;
+                }
+
+                Dice newDice = Instantiate(choice.rewardDicePrefab);
+                DiceInventoryUI.Instance.AddDice(newDice);
+            }
+
+            Debug.Log($"[Dialogue] Reward: +{choice.rewardDiceCount} dice.");
+        }
+    }
+
     private IEnumerator FadeText(string fullText)
     {
         dialogueText.text = "";
@@ -165,5 +204,8 @@ public class UIManager : MonoBehaviour
     public void CloseDialogue()
     {
         dialoguePanel.SetActive(false);
+
+        if (pawnRef != null)
+            pawnRef.IsDialogueLocked = false;
     }
 }

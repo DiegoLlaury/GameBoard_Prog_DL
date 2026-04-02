@@ -23,6 +23,7 @@ public class Pawn : MonoBehaviour
 
     public bool isMoving = false;
     public bool IsUsingDice { get; private set; }
+    public bool IsDialogueLocked { get; set; }
 
 
     private Dice currentDice;
@@ -32,18 +33,20 @@ public class Pawn : MonoBehaviour
     {
         if (board == null)
         {
-            Debug.LogError("Board non assigné dans le Pawn");
+            Debug.LogError("Board non assignï¿½ dans le Pawn");
             return;
         }
 
         if (board.cells == null)
         {
-            Debug.LogError("La grille n'est pas encore générée");
+            Debug.LogError("La grille n'est pas encore gï¿½nï¿½rï¿½e");
             return;
         }
 
         currentX = board.rows / 2;
         currentY = (board.referenceColumn % board.columns) + 2;
+
+        board.SetSpawnRow(currentX);
 
         Cell startCell = board.GetCell(currentX, currentY);
         currentWorldColumn = startCell.WorldColumnIndex;
@@ -54,7 +57,7 @@ public class Pawn : MonoBehaviour
 
     private void Update()
     {
-        if (isMoving || IsUsingDice)
+        if (isMoving || IsUsingDice || IsDialogueLocked)
             return;
 
         if (Mouse.current.leftButton.wasPressedThisFrame)
@@ -134,6 +137,16 @@ public class Pawn : MonoBehaviour
         highlightedCells.Clear();
     }
 
+    /// <summary>
+    /// Forces the removal of all move-range highlights. Call this on death or turn reset.
+    /// </summary>
+    public void ForceHideMovementRange()
+    {
+        ClearMovementRange();
+        movementPoints = 0;
+        IsUsingDice = false;
+    }
+
     public void MoveToCell(Cell targetCell)
     {
         if (isMoving)
@@ -142,16 +155,19 @@ public class Pawn : MonoBehaviour
         if (!reachable.ContainsKey(targetCell))
             return;
 
-        List<Cell> path = board.ReconstructPath(reachable[targetCell]);
+        BFSNode targetNode = reachable[targetCell];
 
-        if (path.Count > movementPoints)
+        // Utilise le coÃ»t BFS rÃ©el au lieu du nombre de cases
+        if (targetNode.cost > movementPoints)
             return;
 
+        List<Cell> path = board.ReconstructPath(targetNode);
+
         ClearMovementRange();
-        StartCoroutine(MoveAlongPath(path));
+        StartCoroutine(MoveAlongPath(path, targetNode.cost));
     }
 
-    private IEnumerator MoveAlongPath(List<Cell> path)
+    private IEnumerator MoveAlongPath(List<Cell> path, int pathCost)
     {
         isMoving = true;
 
@@ -163,11 +179,12 @@ public class Pawn : MonoBehaviour
             currentY = cell.gridY;
             currentWorldColumn = cell.WorldColumnIndex;
 
-            movementPoints--;
             yield return new WaitForSeconds(0.1f);
         }
 
-        
+        // DÃ©duit le coÃ»t rÃ©el du dÃ©placement BFS
+        movementPoints -= pathCost;
+
         ActivateCell();
         Board.Instance.SetPlayerProgress(currentWorldColumn);
 

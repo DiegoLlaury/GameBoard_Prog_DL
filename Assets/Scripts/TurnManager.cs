@@ -20,10 +20,19 @@ public class TurnManager : MonoBehaviour
 
     public void RegisterDurable(IDurable durable)
     {
-        if (!durables.Contains(durable))
-        {
-            durables.Add(durable);
-        }
+        if (durable == null)
+            return;
+
+        if (durables.Contains(durable))
+            return;
+
+        durables.Add(durable);
+        Debug.Log($"Registered durable: {durable.GetType().Name} (Total: {durables.Count})");
+    }
+
+    public void UnregisterDurable(IDurable durable)
+    {
+        durables.Remove(durable);
     }
 
     public void StartTurn()
@@ -47,15 +56,20 @@ public class TurnManager : MonoBehaviour
 
     public void EndTurn()
     {
-        foreach (IDurable durable in durables)
-            durable.OnTurnPassed();
-
-        board.TryAdvanceDestroyedFront();
-
+        // 1. Effets de fin de tour sur la case actuelle du joueur (avant la décroissance)
         Cell current = board.GetCell(player.currentX, player.currentY);
         if (current != null)
             current.OnPlayerEndTurn(player);
 
+        // 2. Itérer sur une copie pour éviter une modification de la liste pendant l'itération
+        List<IDurable> snapshot = new List<IDurable>(durables);
+        foreach (IDurable durable in snapshot)
+            durable.OnTurnPassed();
+
+        // 3. Avancer le front de destruction
+        board.TryAdvanceDestroyedFront();
+
+        // 4. Vérification de mort après tous les effets
         if (current == null || !current.isWalkable || current.state == ECellState.Destroyed)
         {
             Die();
@@ -73,6 +87,7 @@ public class TurnManager : MonoBehaviour
 
     public void Die()
     {
+        player.ForceHideMovementRange();
         Debug.Log("You died");
     }
 

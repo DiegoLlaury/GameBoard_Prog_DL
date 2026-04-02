@@ -15,16 +15,19 @@ MonoBehaviour:
   characterName: Nurclar
   characterImage: {fileID: 21300000, guid: cc7cdecd01c1594459c5297f7096c2fc, type: 3}
   dialogues:
-  - "Qu'avons nous l\xE0 ! tu t'est retrouver dans l'antre."
-  - Ce monde ce meurt, he he... Ton seul espoir si tu ne veut pas souffrir c'est
-    d'arriver jusqu'au bout.
-  - "Mais dans tout cas maintenent tu est bloquer, que tu veuille ou non ce monde
-    cycle \xE0 l'infinie d\xE9truisant et reconstruisant."
-  - Nous verrons combiens de temps tu tiendra.
+  - "Qu'avons-nous l\xE0 ! Je vois que tu t'es retrouv\xE9 dans l'antre."
+  - Sache qu'ici le monde se meurt... Ton seul espoir si tu ne veux pas souffrir,
+    c'est d'arriver jusqu'au bout.
+  - "Mais dans tout cas maintenant, tu es bloqu\xE9, que tu veuilles ou non. Ce monde
+    ce cycle \xE0 l'infini se d\xE9truisant et se reconstruisant."
+  - "Tiens-je te passe un de mes d\xE9s de chair, il t'aidera a progresser plus loin."
   choices:
-  - choiceText: Payer
-    consequenceText: Merci bien mon cher he he.
-    effectOnPlayer: 0
-  - choiceText: Partir
-    consequenceText: "Tant pis, \xE0 la revoyure ! "
-    effectOnPlayer: 0
+  - choiceText: Prendre
+    consequenceText: "J'ai h\xE2te de savoir combien de temps, tu tiendras."
+    effectOnPlayer: 1
+    costResource: {fileID: 0}
+    costAmount: 0
+    rewardResource: {fileID: 0}
+    rewardAmount: 0
+    rewardDicePrefab: {fileID: 5592345193978729788, guid: 43c56930aa7c3ad47afcee66df01ad1a, type: 3}
+    rewardDiceCount: 1

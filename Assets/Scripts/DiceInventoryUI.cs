@@ -24,7 +24,7 @@ public class DiceInventoryUI : MonoBehaviour
 
     void AddStartingDice()
     {
-        Dice dice = Instantiate(startingDicePrefab, transform);
+        Dice dice = Instantiate(startingDicePrefab);
         AddDice(dice);
     }
 
