@@ -22,7 +22,7 @@ public class Pawn : MonoBehaviour
     List<Cell> highlightedCells = new List<Cell>();
 
     public bool isMoving = false;
-    public bool IsUsingDice { get; private set; }
+    public bool IsUsingDice { get; set; }
     public bool IsDialogueLocked { get; set; }
 
 
@@ -42,6 +42,11 @@ public class Pawn : MonoBehaviour
             Debug.LogError("La grille n'est pas encore g�n�r�e");
             return;
         }
+
+        // Skip default spawn placement when a save restore is pending —
+        // BoardSaveManager.RestoreAfterStart will set position, currentX/Y, etc.
+        if (BoardSaveManager.IsRestorePending)
+            return;
 
         currentX = board.rows / 2;
         currentY = (board.referenceColumn % board.columns) + 2;
@@ -185,8 +190,14 @@ public class Pawn : MonoBehaviour
         // Déduit le coût réel du déplacement BFS
         movementPoints -= pathCost;
 
+        // Activate dialogue / visual effects on the landing cell
         ActivateCell();
         Board.Instance.SetPlayerProgress(currentWorldColumn);
+
+        // Trigger cell effects (events, resources) on every landing, not just end of turn
+        Cell landedCell = board.GetCell(currentX, currentY);
+        if (landedCell != null)
+            landedCell.OnPlayerEndTurn(this);
 
         isMoving = false;
 

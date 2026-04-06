@@ -482,6 +482,39 @@ public class Board : MonoBehaviour
             PlayerProgressY = worldColumn;
     }
 
+    // -------------------------------------------------------------------------
+    // Save / Restore API (used exclusively by BoardSaveManager)
+    // -------------------------------------------------------------------------
+
+    /// <summary>Captures all private generation state into a flat data struct.</summary>
+    public BoardGenerationState GetGenerationState() => new BoardGenerationState
+    {
+        playerProgressY             = PlayerProgressY,
+        destroyedUntil              = DestroyedUntil,
+        highestGeneratedWorldColumn = highestGeneratedWorldColumn,
+        nextDialogueColumn          = nextDialogueColumn,
+        nextEventColumn             = nextEventColumn,
+        safeRow                     = safeRow,
+        generationStopped           = generationStopped,
+        endPlaced                   = endPlaced,
+    };
+
+    /// <summary>Restores private generation state from a saved snapshot.</summary>
+    public void RestoreGenerationState(BoardGenerationState s)
+    {
+        PlayerProgressY             = s.playerProgressY;
+        DestroyedUntil              = s.destroyedUntil;
+        highestGeneratedWorldColumn = s.highestGeneratedWorldColumn;
+        nextDialogueColumn          = s.nextDialogueColumn;
+        nextEventColumn             = s.nextEventColumn;
+        safeRow                     = s.safeRow;
+        generationStopped           = s.generationStopped;
+        endPlaced                   = s.endPlaced;
+    }
+
+    /// <summary>Returns the dialogue pool so the serializer can map indices to assets.</summary>
+    public DialogueDatas[] GetDialoguePool() => dialoguePool;
+
     public void TryAdvanceDestroyedFront()
     {
         int next = DestroyedUntil + 1;

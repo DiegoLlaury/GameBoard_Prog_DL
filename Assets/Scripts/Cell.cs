@@ -27,6 +27,15 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
     [SerializeField] private ResourceData rottenFlesh;
     private bool eventTriggered = false;
 
+    /// <summary>
+    /// Exposes and sets the one-shot event flag for the save/restore system.
+    /// </summary>
+    public bool EventTriggered
+    {
+        get => eventTriggered;
+        set => eventTriggered = value;
+    }
+
     private Color originalColor;
     [SerializeField] private float colorVariationStrength = 0.12f;
     private Color colorVariation;
@@ -303,26 +312,14 @@ public class Cell : MonoBehaviour, ICellActivable, IDurable
 
     void TriggerRandomEvent()
     {
-        if (rottenFlesh == null)
-            return;
-
-        int roll = Random.Range(0, 3);
-
-        switch (roll)
+        if (MinigameManager.Instance != null)
         {
-            case 0:
-                GainFlesh(Random.Range(2, 5));
-                Debug.Log("Event : chair r�cup�r�e");
-                break;
-
-            case 1:
-                GainFlesh(Random.Range(1, 3));
-                Debug.Log("Event : r�cup�ration faible");
-                break;
-
-            case 2:
-                Debug.Log("Event : rien ne se passe...");
-                break;
+            Debug.Log("Event : mini-jeu déclenché !");
+            MinigameManager.Instance.RequestRandomMinigame();
+        }
+        else
+        {
+            Debug.LogWarning("[Cell] TriggerRandomEvent: MinigameManager.Instance is null.");
         }
     }
 

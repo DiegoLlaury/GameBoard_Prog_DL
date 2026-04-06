@@ -19,6 +19,11 @@ public class DiceInventoryUI : MonoBehaviour
 
     private void Start()
     {
+        // Skip adding the default starting dice when a save restore is pending —
+        // BoardSaveManager will recreate the correct dice inventory.
+        if (BoardSaveManager.IsRestorePending)
+            return;
+
         AddStartingDice();
     }
 
@@ -45,6 +50,23 @@ public class DiceInventoryUI : MonoBehaviour
     {
         diceUIs.Remove(ui);
         Destroy(ui.gameObject);
+    }
+
+    /// <summary>Returns a read-only snapshot of the current dice slots for save purposes.</summary>
+    public IReadOnlyList<DiceUI> GetDiceSlots() => diceUIs;
+
+    /// <summary>Returns the starting dice prefab so the restore system can recreate dice.</summary>
+    public Dice GetStartingDicePrefab() => startingDicePrefab;
+
+    /// <summary>Destroys all current dice UI slots. Used by the restore system before re-adding saved dice.</summary>
+    public void ClearAllDice()
+    {
+        foreach (DiceUI ui in diceUIs)
+        {
+            if (ui != null)
+                Destroy(ui.gameObject);
+        }
+        diceUIs.Clear();
     }
 
     public void UseDice(DiceUI ui)

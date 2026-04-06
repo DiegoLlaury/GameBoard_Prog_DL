@@ -8,14 +8,18 @@ public class TurnManager : MonoBehaviour
     [SerializeField] private Pawn player;
 
     public int currentTurn {  get; private set; } = 0;
-    public bool diceUsedThisTurn { get; private set; } = false;
+    public bool diceUsedThisTurn { get; set; } = false;
 
     private List<IDurable> durables = new List<IDurable>();
 
     private void Awake()
     {
         Instance = this;
-        StartTurn();
+
+        // Skip the first automatic StartTurn when a save restore is pending —
+        // the saved turn count will be applied by BoardSaveManager.
+        if (!BoardSaveManager.IsRestorePending)
+            StartTurn();
     }
 
     public void RegisterDurable(IDurable durable)
@@ -43,6 +47,15 @@ public class TurnManager : MonoBehaviour
         Debug.Log($"=== TOUR {currentTurn} ===");
     }
 
+    /// <summary>
+    /// Overrides the turn counter directly. Used exclusively by the save/restore system
+    /// to resume a session without replaying all previous turns.
+    /// </summary>
+    public void RestoreTurnCount(int savedTurn)
+    {
+        currentTurn = savedTurn;
+    }
+
     public bool CanRollDice()
     {
         Debug.Log("IsWorking");
@@ -56,20 +69,20 @@ public class TurnManager : MonoBehaviour
 
     public void EndTurn()
     {
-        // 1. Effets de fin de tour sur la case actuelle du joueur (avant la décroissance)
-        Cell current = board.GetCell(player.currentX, player.currentY);
-        if (current != null)
-            current.OnPlayerEndTurn(player);
+        // Cell effects (events, resources) are now triggered by Pawn.MoveAlongPath
+        // on every landing, so we only handle decay and destruction checks here.
 
-        // 2. Itérer sur une copie pour éviter une modification de la liste pendant l'itération
+        Cell current = board.GetCell(player.currentX, player.currentY);
+
+        // Itérer sur une copie pour éviter une modification de la liste pendant l'itération
         List<IDurable> snapshot = new List<IDurable>(durables);
         foreach (IDurable durable in snapshot)
             durable.OnTurnPassed();
 
-        // 3. Avancer le front de destruction
+        // Avancer le front de destruction
         board.TryAdvanceDestroyedFront();
 
-        // 4. Vérification de mort après tous les effets
+        // Vérification de mort après tous les effets
         if (current == null || !current.isWalkable || current.state == ECellState.Destroyed)
         {
             Die();

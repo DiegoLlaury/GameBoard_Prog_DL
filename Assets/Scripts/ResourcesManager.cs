@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class ResourceManager : MonoBehaviour
 {
-    public static ResourceManager Instance;
+    public static ResourceManager Instance { get; private set; }
 
     public event Action<ResourceData, int> OnResourceChanged;
 
@@ -20,16 +20,27 @@ public class ResourceManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-
-            ResetAllResources();
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+        ResetAllResources();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            // Only warn during gameplay — exiting Play mode always destroys everything,
+            // which is expected and not an error.
+            if (Application.isPlaying)
+                Debug.LogWarning("[ResourceManager] The singleton instance was destroyed during gameplay.");
+
+            Instance = null;
         }
     }
 
