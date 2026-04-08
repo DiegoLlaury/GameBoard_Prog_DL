@@ -24,6 +24,10 @@ Dé organique :
 
 ici le dé sert au joueur afin de se déplacer à travers le corps, au début votre dés sera “frais” et pourra proposer le maximum de déplacement pour le personnage, mais plus il sera utilisé plus le dé se décomposer et proposera des résultats de dés moins favorables (3 forme de décomposition : frais, pourrie, nécrosée).
 
+Minijeu : 
+
+- Minijeu de récolte : Le joueur doit récolter le plus de ressource avant de ce faire attrapper par un zombie. Plus le minijeu dure, plus la difficulter augmente.
+
 Prototypage : 
 
 - Système de déplacement avec dé (si possible physique)
