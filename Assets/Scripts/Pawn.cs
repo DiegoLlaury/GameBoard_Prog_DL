@@ -111,7 +111,7 @@ public class Pawn : MonoBehaviour
         ShowMovementRange();
     }
 
-    private void ShowMovementRange()
+    public void ShowMovementRange()
     {
         if (movementPoints <= 0)
             return;
