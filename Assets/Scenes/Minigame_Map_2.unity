@@ -2991,11 +2991,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   config: {fileID: 11400000, guid: 5d73981923db6cd4a984f33dcb113728, type: 2}
   playerController: {fileID: 1161726162}
-  finishZone: {fileID: 0}
+  finishZone: {fileID: 1420318121}
   zombies:
   - {fileID: 731871094}
+  - {fileID: 508309759}
+  - {fileID: 1260802860}
   playerHealth: {fileID: 1161726161}
-  hud: {fileID: 0}
+  hud: {fileID: 1096834028}
 --- !u!1 &1654011813
 GameObject:
   m_ObjectHideFlags: 0

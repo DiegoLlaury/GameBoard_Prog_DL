@@ -18,8 +18,8 @@ MonoBehaviour:
   playerRotationSpeed: 200
   gravity: -20
   jumpHeight: 1.5
-  zombieStartSpeed: 8
-  zombieMaxSpeed: 14
+  zombieStartSpeed: 4
+  zombieMaxSpeed: 10
   finishReward: {fileID: 11400000, guid: c919b615fe0bf904c83f323005e558ee, type: 2}
   finishRewardAmount: 25
   timeBonus: {fileID: 11400000, guid: c919b615fe0bf904c83f323005e558ee, type: 2}
