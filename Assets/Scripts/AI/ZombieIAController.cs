@@ -89,6 +89,12 @@ public class ZombieIAController : MonoBehaviour
     /// <summary>Fired when an attack successfully lands on a target in range.</summary>
     public event Action<Transform> OnAttackLanded;
 
+    /// <summary>
+    /// When true, the zombie skips Patrol entirely and chases the player immediately.
+    /// Scream and waypoints are disabled. Used by ZombieRaceMinigame.
+    /// </summary>
+    private bool pursuitOnlyMode;
+
     // Base values for difficulty scaling
     private float basePatrolSpeed;
     private float baseChaseSpeed;
@@ -118,7 +124,7 @@ public class ZombieIAController : MonoBehaviour
         // Upper Body layer starts inactive (no attack playing)
         animator.SetLayerWeight(UPPER_BODY_LAYER, 0f);
 
-        TransitionTo(ZombieState.Patrol);
+        TransitionTo(pursuitOnlyMode ? ZombieState.Chase : ZombieState.Patrol);
     }
 
     private void Update()
@@ -192,6 +198,13 @@ public class ZombieIAController : MonoBehaviour
     {
         patrolTimer += Time.deltaTime;
 
+        // In pursuit-only mode, skip scream and go straight to chase as soon as possible
+        if (pursuitOnlyMode)
+        {
+            TransitionTo(ZombieState.Chase);
+            return;
+        }
+
         // Scream can only happen after patrolling for a minimum duration
         if (screamTimer <= 0f && patrolTimer >= minPatrolBeforeScream)
         {
@@ -217,6 +230,24 @@ public class ZombieIAController : MonoBehaviour
 
     private void UpdateChase()
     {
+        // In pursuit-only mode, always chase the player directly without losing target
+        if (pursuitOnlyMode)
+        {
+            if (playerTransform != null)
+            {
+                agent.SetDestination(playerTransform.position);
+
+                float distToPlayer = Vector3.Distance(transform.position, playerTransform.position);
+
+                if (distToPlayer <= attackDistance && attackCooldownTimer <= 0f)
+                    TriggerAttack();
+
+                if (distToPlayer >= jumpTriggerDistance && jumpCooldownTimer <= 0f)
+                    TriggerJump();
+            }
+            return;
+        }
+
         if (sight.IsPlayerDetected)
         {
             losePlayerTimer = losePlayerDelay;
@@ -454,6 +485,32 @@ public class ZombieIAController : MonoBehaviour
     }
 
     // -------------------------------------------------------------------------
+    // Pursuit-only mode (ZombieRace)
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Enables pursuit-only mode: the zombie skips Patrol, ignores waypoints and scream,
+    /// and immediately chases the player at all times. Call this before enabling the component.
+    /// </summary>
+    public void EnablePursuitMode()
+    {
+        pursuitOnlyMode = true;
+
+        // If already running, switch to Chase immediately
+        if (state != ZombieState.Chase)
+            TransitionTo(ZombieState.Chase);
+    }
+
+    /// <summary>
+    /// Disables pursuit-only mode and returns the zombie to normal Patrol/Chase behaviour.
+    /// </summary>
+    public void DisablePursuitMode()
+    {
+        pursuitOnlyMode = false;
+        TransitionTo(ZombieState.Patrol);
+    }
+
+    // -------------------------------------------------------------------------
     // Animator
     // -------------------------------------------------------------------------
 
@@ -514,5 +571,20 @@ public class ZombieIAController : MonoBehaviour
         chaseSpeed     = baseChaseSpeed;
         attackCooldown = baseAttackCooldown;
         screamInterval = baseScreamInterval;
+    }
+
+    /// <summary>
+    /// Overrides both patrol and chase speed to the given absolute value.
+    /// Used by ZombieRaceMinigame to ramp up pursuit speed over time.
+    /// </summary>
+    public void SetMoveSpeed(float speed)
+    {
+        patrolSpeed = speed;
+        chaseSpeed  = speed;
+
+        if (state == ZombieState.Chase)
+            agent.speed = chaseSpeed;
+        else if (state == ZombieState.Patrol)
+            agent.speed = patrolSpeed;
     }
 }

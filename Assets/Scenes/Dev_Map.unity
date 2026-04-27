@@ -1465,7 +1465,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -15.000015}
+  m_AnchoredPosition: {x: 0, y: -15}
   m_SizeDelta: {x: -500, y: -170}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &432533035
@@ -3818,6 +3818,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   availableMinigames:
   - {fileID: 11400000, guid: 6c7db7712a66c504e9ceae2b234f0bfa, type: 2}
+  - {fileID: 11400000, guid: 253ef36f851287c4ea26f99c7cbf29e6, type: 2}
 --- !u!114 &1798463851
 MonoBehaviour:
   m_ObjectHideFlags: 0

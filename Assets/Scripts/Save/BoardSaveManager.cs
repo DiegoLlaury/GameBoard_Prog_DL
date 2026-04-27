@@ -24,6 +24,12 @@ public class BoardSaveManager : MonoBehaviour
     public bool HasPendingSave { get; private set; }
 
     /// <summary>
+    /// Resources earned during the last minigame, applied on top of the restored save state.
+    /// Null when no minigame has been played or after the rewards have been applied.
+    /// </summary>
+    private MinigameResult pendingMinigameResult;
+
+    /// <summary>
     /// Quick static check for other MonoBehaviours to skip their default initialization
     /// when a board restore is pending (e.g. Pawn.Start, DiceInventoryUI.Start).
     /// </summary>
@@ -62,6 +68,9 @@ public class BoardSaveManager : MonoBehaviour
         // Guard against double-subscription across scene reloads
         MinigameManager.Instance.OnMinigameConfirmed -= OnMinigameConfirmed;
         MinigameManager.Instance.OnMinigameConfirmed += OnMinigameConfirmed;
+
+        MinigameManager.Instance.OnMinigameEnded -= OnMinigameEnded;
+        MinigameManager.Instance.OnMinigameEnded += OnMinigameEnded;
     }
 
     /// <summary>
@@ -69,6 +78,15 @@ public class BoardSaveManager : MonoBehaviour
     /// This is the last safe moment to snapshot the board.
     /// </summary>
     private void OnMinigameConfirmed() => SaveBoard();
+
+    /// <summary>
+    /// Fired by MinigameManager when the minigame ends, before the board scene reloads.
+    /// Stores the result so RestoreAfterStart can apply the earned resources on top of the save.
+    /// </summary>
+    private void OnMinigameEnded(MinigameData data, MinigameResult result)
+    {
+        pendingMinigameResult = result;
+    }
 
     // ── Scene lifecycle ───────────────────────────────────────────────────────
 
@@ -148,6 +166,20 @@ public class BoardSaveManager : MonoBehaviour
         }
 
         BoardStateSerializer.Restore(data, board, pawn, turns, resources, dice);
+
+        // Apply resources earned during the minigame on top of the restored state
+        if (pendingMinigameResult != null)
+        {
+            foreach (var kvp in pendingMinigameResult.CollectedResources)
+            {
+                if (kvp.Key != null && kvp.Value > 0)
+                    resources.AddResource(kvp.Key, kvp.Value);
+            }
+
+            Debug.Log($"[BoardSaveManager] Applied {pendingMinigameResult.CollectedResources.Count} minigame reward(s).");
+            pendingMinigameResult = null;
+        }
+
         HasPendingSave = false;
 
         Debug.Log("[BoardSaveManager] Board state restored successfully.");

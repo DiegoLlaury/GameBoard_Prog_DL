@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a1694eae58c35e4080173c28a3ee102, type: 3}
+  m_Name: ZombieRaceConfig
+  m_EditorClassIdentifier: 
+  timeLimit: 30
+  playerMoveSpeed: 11.25
+  playerSprintSpeed: 14
+  playerRotationSpeed: 200
+  gravity: -20
+  jumpHeight: 1.5
+  zombieStartSpeed: 8
+  zombieMaxSpeed: 14
+  finishReward: {fileID: 11400000, guid: c919b615fe0bf904c83f323005e558ee, type: 2}
+  finishRewardAmount: 25
+  timeBonus: {fileID: 11400000, guid: c919b615fe0bf904c83f323005e558ee, type: 2}
+  timeBonusInterval: 10
